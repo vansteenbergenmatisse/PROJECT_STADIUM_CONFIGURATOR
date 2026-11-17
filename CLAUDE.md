@@ -6,7 +6,7 @@ It is currently an **orange "Soccer City" (Johannesburg) style stadium in a gree
 78,397 seats in ONE `InstancedMesh` (straight aisles; only plain-orange seats are available), click-only camera plus a head turn at the seat level, prices shown only on hover cards and in the selection panel,
 56 skyboxes, 4 entrances + 4 exits with ~180 walking fans on the access roads, matchday stalls and flagpoles, a pitch with ad boards / flags / dugouts / officials / stewards / photographers,
 a fenced car park of 4 tinted lots (yellow bay lines = park, yellow hatch = no parking, gate portals) with 50 parked cars, a dense forest, blue sky with sun and clouds, an 11 v 11 demo match (Barcelona v Dortmund) with a live scoreboard, a demo checkout pop-up with matchday extras,
-a Forge Forward branded UI that works on phones (price panel, scoreboard and view buttons can be folded away), a loading screen (`assets/loader.html`) shown while the scene builds. No houses. Parking is not selectable. The AI photo render was removed (book entry 20); `proxy/` is unused.
+a Forge Forward branded UI that works on phones (price panel, scoreboard and view buttons can be folded away), an inline loading screen (SVG + CSS, `css/loader.css`, `src/ui/loader.js`) shown while the scene builds. No houses. Parking is not selectable. The AI photo render was removed (book entry 20); `proxy/` is unused.
 
 ## Repository and hosting
 - GitHub: https://github.com/vansteenbergenmatisse/PROJECT_STADIUM_CONFIGURATOR (branch `main`). Live demo on GitHub Pages: https://vansteenbergenmatisse.github.io/PROJECT_STADIUM_CONFIGURATOR/ (deploys from `main`, root folder, no build).

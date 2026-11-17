@@ -23,7 +23,7 @@ overview -> click a skybox -> **suite** (button "View from this suite"). Parking
 `Esc` / Back: seat -> section, anything else -> overview. Clicking a seat of a different block always selects that block first.
 
 ## Picking
-`pick()` raycasts `terraces[0..2] + glassMesh` (parking removed from `PICK`; not the 78k seats, that would be slow). Terrace hit -> nearest seat through the spatial grid
+`pick()` raycasts `terraces[0..2] + glassMesh` (parking removed from `PICK`; not the 78k seats, that would be slow). Since entry 33 the ray is tested against a two-level box hierarchy over the terrace and glass triangles first; only the surviving triangle runs reach three's `Mesh.raycast`, so hit results are the same (2530 of 2530 test rays gave the same picked id; hit distance and point were not compared). Terrace hit -> nearest seat through the spatial grid
 (cell 3 m, 3D distance < ~1.1 m). A hit on the middle-tier platform inside the skybox depth band counts as a suite.
 Hover is throttled to one pick per animation frame. A click = pointerdown/up within 6 px.
 

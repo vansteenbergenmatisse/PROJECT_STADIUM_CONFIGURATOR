@@ -1,7 +1,7 @@
 # 02 — Architecture of `index.html` and `src/`
 
-One HTML file (markup + import map), eight stylesheets in `css/` (see "Stylesheets" below) and ES modules in `src/` (see "Source layout" below; the entry is `<script type="module" src="./src/main.js">`). three.js r160 via an import map (jsDelivr). Addons used:
-`BufferGeometryUtils.mergeGeometries`, `objects/Sky.js`. OrbitControls is NOT used any more (camera is a fixed rig).
+One HTML file (markup, the inline loading screen and the import map), nine stylesheets in `css/` (see "Stylesheets" below) and ES modules in `src/` (see "Source layout" below; the entry is `<script type="module" src="./src/main.js">`). three.js r160 (0.160.0) via an import map (jsDelivr), the minified file `https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js` (history entry 31; the import map and the `modulepreload` link use the same URL). Addons used:
+`BufferGeometryUtils.mergeGeometries` (also through `src/core/merge.js`), `objects/Sky.js`. OrbitControls is NOT used any more (camera is a fixed rig).
 
 ## Section order in the script (search for the `/* ---- ... */` markers)
 Since history entry 29 this order is the BUILD ORDER of `src/main.js`; sections 1-10 and the sky / lights now live in `src/` modules (map below), sections 11-17 moved out in step 3b (history entry 30; map in "Source layout" below: camera rig -> interaction/camera-rig.js, prices -> data/display-prices.js, markers -> world/markers.js, selection + painting -> interaction/, UI -> ui/, picking -> interaction/picking.js + hover.js + input.js, loop -> core/loop.js, window.__stadium -> debug/expose.js).
@@ -59,23 +59,24 @@ No CSS transitions or animations in the UI chrome.
 - `window.__stadium` (debug handle) exposes `scene`, `sun`, `renderer`, `camera`, `selectSection/Seat/Suite/Lot`, `go()`; `window.__parkedCars` = 50.
 
 ## Added in batch 25 (history entry 25)
-- **Boot** (top of the script): `boot` / `mark()` / `yieldToPaint()`. The script awaits `yieldToPaint()` at the start and before each big section (ground, terraces, seats, skyboxes, park, shops, trees, camera rig) so the loading screen can draw; `window.__boot` holds `[name, ms since navigation]` pairs. The loading screen is `#loading` (an iframe of `assets/loader.html`), removed after two rAFs following the first render call.
+- **Boot** (top of `src/main.js`): `boot` / `mark()` / `yieldToPaint()`. The script awaits `yieldToPaint()` at the start and before each big section (ground, terraces, seats, skyboxes, park, shops, trees, camera rig) so the loading screen can draw; `window.__boot` holds `[name, ms since navigation]` pairs. The loading screen is `#loading`, inline SVG and CSS markup in `index.html` styled by `css/loader.css` and driven by `src/ui/loader.js` (history entry 31); it is removed after two rAFs following the first render call. The old iframe and `assets/loader.html` no longer exist.
 - **Heights** in the park section: `Y_LOT 0.38`, `Y_MARK 0.41`, `Y_PATH 0.46`, `Y_ROAD 0.56`, `Y_DASH 0.58` (meadow 0, plaza 0.15). Cars, fence, signs and fans use them (fan paths carry a 5th value = ground height).
 - **Access roads**: `radialPoint(a, d)`; each spur bends off the loop, then runs on the straight radial line of its gate angle and ends at `PARK_IN + 0.5`.
 - **Fold buttons**: `.fold` buttons in `#hud`, `#panel`, `#scorecard`; JS block before the picking section toggles `is-folded` and `aria-expanded`; folded cards are fully hidden (28 px "+" dot), `H` toggles all.
 - **Bay grid** (before the bay lines): `BAY_ROWS`, `BAY_EDGES` (theta, even arc spacing on the lot middle), `radialYaw`; painted lines and parked cars both read it.
 
-## Stylesheets (history entry 28)
-No inline `<style>` any more. `index.html` links `css/*.css` in this exact order (plain `<link>` tags, no `@import`). The files are the original single stylesheet cut into contiguous chunks, so the cascade and specificity are unchanged. Do not reorder them.
+## Stylesheets (history entries 28 and 31)
+No inline `<style>` any more. `index.html` links `css/*.css` in this exact order (`loader.css`, added in entry 31, sits after `tokens.css`; the table below lists the eight original files) (plain `<link>` tags, no `@import`). The files are the original single stylesheet cut into contiguous chunks, so the cascade and specificity are unchanged. Do not reorder them.
 | Order | File | Holds |
 |---|---|---|
 | 1 | `tokens.css` | `--ff-*` custom properties in `:root` |
+| 1b | `loader.css` | the loading screen `#loading` (charcoal field, SVG outline, hairline progress bar driven by `--p`, fade, reduced motion) |
 | 2 | `base.css` | resets, html/body, canvas, button font, focus ring |
 | 3 | `hud.css` | `#hud`, `#views`, tabs, shared `.btn`, hidden title / hint rules |
 | 4 | `panel.css` | `#panel`, `#selection`, ticket cards (`#tip`, seat, VIP), `.badge` |
 | 5 | `scoreboard.css` | `#scorecard`, `.sc-*`, `.disc` and their media queries |
 | 6 | `checkout.css` | `#modal`, `.sheet`, payment, ticket details |
-| 7 | `overlays.css` | `#vignette`, `#help`, `#loading`, `.sr-only`, fold buttons |
+| 7 | `overlays.css` | `#vignette`, `#help`, `.sr-only`, fold buttons |
 | 8 | `responsive.css` | phone layout (max 760 px), touch, short landscape; LAST on purpose |
 The hover card (`#tip`) lives in `panel.css`, not `hud.css`, and the scoreboard has its own file, because a split by purpose that also keeps the original rule order needs contiguous chunks. The Google Fonts link is unchanged (still in `index.html`).
 
@@ -107,3 +108,10 @@ Dependency direction: `config` -> `data` -> `core` -> `world` -> `sim` -> `inter
 | `state` | `state.js` | the shared mutable state object (nav, selection, hover, buy, tween, look, thumbWanted, roofFaded). `nav` and `look` are objects mutated in place (main.js aliases them); the rest is read / written as `state.<name>` |
 Build order and RNG: `buildGround` (rand: meadow, paving), `buildPitch` (rand), `buildTerraces` (rand), `buildFacade` (rand), `buildGates`, `buildSeats`, `buildSkyboxes`, `buildRoof`, `buildRoads`, `buildParking` (rng 777, rng 4242), `buildShops` (rand; appends to `roadSamples`), `buildMatchday` (rng 7777), `buildTrees` (rand, reads `roadSamples`). Moving any of these changes the scene.
 Import map stays in `index.html` (modules import the bare `three` and `three/addons/...`); own imports are relative with the `.js` extension, so the page works from a sub-path.
+
+## Added after the refactor (history entries 31 to 35)
+- **Loader files:** markup of `#loading` in `index.html` (1,391 B), `css/loader.css` (2,095 B), `src/ui/loader.js` (3,552 B: `createLoader`, `setProgress`, `progressFromMark`, `hideLoader`). `main.js` feeds it from the 9 boot marks (ground, terraces, seats, skyboxes, park, shops, trees, camera rig, bake done). The old `#loading` rules were removed from `css/overlays.css`, so `loader.css` is the only place that styles it (checked by reading the files, not in the browser).
+- **`src/core/merge.js`:** `mergeStatic(scene, meshes, { bakeRotation = false })` returns `{ before, after }`. It merges only opaque, static, non-dynamic meshes with the same material instance, `castShadow`, `receiveShadow`, `renderOrder` and `frustumCulled`, and by default only identity or pure translation world matrices. Used in `world/gates.js` (4 wall arcs), `world/skyboxes.js` (3 frame rails), `world/roads.js` (ribbons and caps per material), `world/parking.js` (28 lines, 8 hatch strips, 4 fence rails) and `world/terraces.js` (4 fascia strips). Never used on the pickable terraces, the roof, anything touched by `setRoofFade`, or `userData.dynamic` objects. Draw calls 498 to 439 (entry 34).
+- **Picking hierarchy:** `src/interaction/picking.js` builds once a two-level box hierarchy (leaf 16 triangles, group 32 leaves) over the triangle order of the pick meshes (terraces and glass, about 140k triangles) and passes the surviving runs to three's `Mesh.raycast` through `drawRange`. Seat lookup is unchanged (spatial grid). Entry 33.
+- **Seat matrices:** `instanceMatrix` uses `StaticDrawUsage`; `instanceColor` stays dynamic (entry 32).
+- **Parity check:** `tools/parity/` holds `fingerprint.js` and the expected values. `objs` and `stableSceneHash` changed by design with the merges (entry 34); see "Not verified" in chapter 06.

@@ -30,11 +30,11 @@ Everything is a demo. The checkout charges nothing, stores nothing and sends not
 | Pitch | Ad boards, corner flags, dugouts, officials, stewards, photographers, goals with nets |
 | Car park | Four lots, 50 cars, a fence with gate portals. Yellow bay lines mark where you may park. Yellow hatching with signs marks where you may not |
 | Surroundings | Access roads with walking fans, a plaza with stalls and flagpoles, shops, trees and a forest |
-| Loading screen | An animated construction time-lapse that plays while the scene builds |
+| Loading screen | A stadium outline that draws itself on a dark background, with a thin progress bar, while the scene builds. It is inline markup in `index.html` (no extra request) |
 
 ## What it is made of
 
-- [three.js](https://threejs.org) r160, loaded from the jsDelivr CDN through an import map
+- [three.js](https://threejs.org) r160 (0.160.0, minified build), loaded from the jsDelivr CDN through an import map
 - Plain HTML, CSS and JavaScript (ES modules): `index.html`, `css/` and `src/`
 - Plus Jakarta Sans from Google Fonts (falls back to your system font)
 - No build step, no package manager, no dependencies to install
@@ -69,11 +69,10 @@ Serve the folder over HTTP. Opening `index.html` straight from disk has not been
 
 ```
 index.html          markup, the import map and the stylesheet links
-css/                stylesheets (tokens, base, hud, panel, scoreboard, checkout, overlays, responsive)
+css/                stylesheets (tokens, loader, base, hud, panel, scoreboard, checkout, overlays, responsive)
 src/main.js         thin boot file: builds the scene in a fixed order, wires the interaction and starts the loop
 src/                core, config, data, world, state, sim, interaction, ui, debug (one responsibility per file)
 tools/parity/       the scene fingerprint used to prove a change did not alter the picture
-assets/loader.html  the loading screen, shown in an iframe while the scene builds
 docs/book/          the project book: history, architecture, pricing, camera, rendering, open issues
 CLAUDE.md           working rules for this repository
 ```

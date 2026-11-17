@@ -12,6 +12,8 @@
   (`autoUpdate = false`, `needsUpdate = true` once, re-armed by the Roof toggle). Seats and glass do not cast. Ring strips use DoubleSide.
 - Static transforms are baked (`matrixAutoUpdate = false`) except objects flagged `userData.dynamic` (suite / lot markers).
 - Anisotropy capped at 16.
+- Seats: `instanceMatrix.setUsage(THREE.StaticDrawUsage)`; `instanceColor` stays dynamic because seats are repainted (entry 32).
+- three.js is the minified `three.module.min.js` 0.160.0 (670,681 B instead of 1,272,972 B), same version, so no rendering change is expected; the fingerprint equalled the baseline (entry 31).
 
 ## Detail work (Soccer City pass)
 Seats: 5 boxes, light baked into the vertex colours by face direction (top 1.0, sides ~0.74-0.9, underside 0.5), three paint tones incl. a pale-gold lattice. Steps: texture with lit nosing (v=0) and dark inner corner (v=1); risers flip v. Pitch: stripes, blade-scale
@@ -30,7 +32,30 @@ Rejected / deferred: chunked seat meshes (violates "one InstancedMesh"), AgX (lo
 becomes possible and would cut idle GPU use. Not implemented yet.
 
 ## Measured once (not a benchmark)
-At the top-down start frame: ~72 draw calls, ~5.1 M triangles (renderer.info). No frame-time measurements were taken.
+At the top-down start frame: ~72 draw calls, ~5.1 M triangles (renderer.info). No frame-time measurements were taken. This line is old and the numbers differ from the later census; later figures are below and in entries 29 to 34.
+
+## Draw calls and merges (entry 34)
+Draw calls went from 498 to 439 at the same frame (907d153 against the new page) by merging static same-material strips with `src/core/merge.js` (28 parking lines, 8 hatch strips, 4 fence rails, road and path ribbons plus caps, 4 gate wall arcs, 4 fascia strips, 3 skybox frame rails). Rules: opaque, static, not `userData.dynamic`, same material instance, `castShadow`, `receiveShadow`, `renderOrder`, `frustumCulled`; by default only identity or translation matrices.
+Rejected: merging rotated or scaled parts (498 to 235 calls) flipped 4 pixels in two views; merging the pitch flag poles and dugouts differed by 1 pixel in one channel in the seat view. Never merged: pickable terraces, the roof, anything touched by `setRoofFade`, dynamic objects.
+Proof: 0 differing pixels in 5 views at 960x540 with dynamic objects hidden in both pages (agent's own Chrome, not independently repeated). A merged mesh has one bounding sphere, so culling is coarser; the effect on frame time was not measured.
+
+## Renderer and loop measurements (entry 32)
+CPU time around `renderer.render` over 120 frames at DPR 2: mean 2.19 to 2.25 ms, p95 2.70 to 2.80 ms after the `StaticDrawUsage` and allocation changes, which is no measurable change. GPU time was not measured. Skipped because the code already did it: pixel ratio cap (1.5 under 760 px, otherwise 2), delta clamp (0.1 loop, 0.05 match); hidden-tab pause skipped because the browser already stops rAF.
+
+## three.js research for performance (scratchpad RESEARCH-threejs.md, r160)
+Source status: fetched with WebFetch and WebSearch in one session. The manual pages for rendering-on-demand, responsive, how-to-dispose and optimize-lots-of-objects returned 404, so those items rest on search snippets or general knowledge. No benefit below was measured by the source; numbers in entries 32 to 34 are ours.
+Adopted:
+- Static instance matrices (`StaticDrawUsage`), per-frame scratch objects instead of allocations (entry 32).
+- Merge static same-material meshes, measured with `renderer.info.render.calls` before and after (entry 34).
+- Faster picking: the source suggested an analytic seat lookup; the seats already used a grid, so the box hierarchy over the terrace and glass triangles was done instead (entry 33). That is our reading of where the cost was.
+- Minified three file and `modulepreload` (entry 31; the modulepreload advice is general web knowledge, unverified against a source).
+Already in place before the research: `matrixAutoUpdate = false` for static objects, frozen shadow map, pixel ratio cap, `renderer.info` use, frustum culling left on.
+Not adopted, or deferred:
+- Render on demand with a dirty flag: the match, fans and tweens animate, so it may rarely idle. Not implemented.
+- Dispose of geometries and textures: the page never unmounts and nothing is created and removed at runtime; no benefit expected. The dispose guidance could not be confirmed because the manual page returned 404.
+- A `ResizeObserver` and debounce for resize: standard practice, unverified against the manual, not done.
+- Splitting seats into several InstancedMeshes for culling: would break the ONE InstancedMesh rule; not done without asking.
+- A three.js upgrade: not tried. Migration notes list risks for this scene (r181 lighting change, r182 `PCFSoftShadowMap` deprecated in WebGL, r183 shadow bias); the tail of the migration guide was unread. The newest release is unverified (r187 or r188, the two sources disagreed). The project stays on r160 on purpose.
 
 ## Visible sky (history entry 13)
 Gradient dome (deep blue overhead, pale blue at the horizon) with a sun disc and glow, a cloud dome (fbm noise in a shader, drifting) and a sun-glow sprite, all moved to the camera every frame (radius < far plane).

@@ -20,6 +20,10 @@
 | seatPosRawBits | 3553838947 |
 | render.textures | 41 |
 
+## Expected values after the mesh merges (merged `main`, commit 710dc2c and later, one load, overview)
+
+`objs` 452, `stableSceneHash` [973551021, 581484809], `tris` 221854, `render.calls` 439, `render.geometries` 403, `render.textures` 41. The seat table values and `seatPosRawBits` stay as in the table above. Use these for any change after the merges; use the table above only to compare with the original.
+
 `render.calls` and `render.geometries` depend on the moment of measurement (492 / 461 and 497 / 462 were both seen on the unchanged original), so compare them against the original loaded the same way, not against a fixed number.
 
 ## Known caveats
