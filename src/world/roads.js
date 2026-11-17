@@ -14,6 +14,7 @@ import * as THREE from 'three';
 import { TAU, A0, B0, EXP, ACCESS_ANGLES, PARK_IN, PARK_OUT, LOOP_RX, LOOP_RZ, Y_PATH, Y_ROAD, Y_DASH } from '../config/constants.js';
 import { shapePoint } from '../data/bowl-math.js';
 import { std, dbl } from '../core/materials.js';
+import { mergeStatic } from '../core/merge.js';
 
 /**
  * Build the loop road, the 4 access spurs with rounded caps, and the dashed centre lines.
@@ -52,14 +53,16 @@ export function buildRoads(ctx) {
   }
   const pathMat = dbl(0xdedcd2, { roughness: 1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
   const roadMat = dbl(0x1d1c21, { roughness: 0.95, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
+  const mergeList = [];                                           // the 5 path ribbons + 4 caps and the 5 road ribbons + 4 caps: merged per material below (core/merge.js; ribbons are in world coordinates, the caps are translated only, so the merge is bit-exact)
   for (const c of curves) {
-    scene.add(ribbon(c, 6.2, Y_PATH, pathMat)); scene.add(ribbon(c, 4.6, Y_ROAD, roadMat));
+    const rp = ribbon(c, 6.2, Y_PATH, pathMat), rr = ribbon(c, 4.6, Y_ROAD, roadMat); scene.add(rp); scene.add(rr); mergeList.push(rp, rr);
     if (c !== curves[0]) {                                                    // access spurs end in a rounded cap inside the parking ring (no square cut-off); the tarmac ends there and the fans walk on to the gate
       const e = c.getPoint(1);
-      for (const [r, yy, mat] of [[6.2, Y_PATH, pathMat], [4.6, Y_ROAD, roadMat]]) { const cap = new THREE.Mesh(new THREE.CircleGeometry(r, 28).rotateX(-Math.PI / 2), mat); cap.position.set(e.x, yy, e.z); cap.receiveShadow = true; scene.add(cap); }
+      for (const [r, yy, mat] of [[6.2, Y_PATH, pathMat], [4.6, Y_ROAD, roadMat]]) { const cap = new THREE.Mesh(new THREE.CircleGeometry(r, 28).rotateX(-Math.PI / 2), mat); cap.position.set(e.x, yy, e.z); cap.receiveShadow = true; scene.add(cap); mergeList.push(cap); }
     }
     for (const pt of c.getSpacedPoints(300)) roadSamples.push(pt);
   }
+  mergeStatic(scene, mergeList);
   const spurSamples = []; for (const c of curves.slice(1)) for (const pt of c.getSpacedPoints(160)) spurSamples.push(pt);
   const roadDist = (x, z) => { let m = Infinity; for (const r of roadSamples) { const dx = r.x - x, dz = r.z - z, d2 = dx * dx + dz * dz; if (d2 < m) m = d2; } return Math.sqrt(m); };
   const outsideStadium = (x, z, margin) => Math.pow(Math.abs(x) / (A0 + PARK_OUT + margin), EXP) + Math.pow(Math.abs(z) / (B0 + PARK_OUT + margin), EXP) > 1;

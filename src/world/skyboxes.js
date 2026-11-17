@@ -16,6 +16,7 @@ import { GLASS_D, Y1, BOX_TOP, BOX_H, BOX_DEPTH } from '../config/constants.js';
 import { arcTable, arcAt } from '../data/bowl-math.js';
 import { ringStrip } from '../core/geometry.js';
 import { std, dbl } from '../core/materials.js';
+import { mergeStatic } from '../core/merge.js';
 
 /**
  * Build the glass strip, its frame rails, the 56 divider walls and chairs, and the suite list.
@@ -34,7 +35,8 @@ export function buildSkyboxes(ctx, { white }) {
     const g = ringStrip([{ d: GLASS_D, y: Y1 }, { d: GLASS_D, y: BOX_TOP }], glass, { cast: false, receive: false });
     g.renderOrder = 2; scene.add(g); glassMesh = g;
     const frame = dbl(0x1b1e23, { metalness: 0.6, roughness: 0.35 });
-    for (const [y0, y1] of [[Y1, Y1 + 0.3], [Y1 + BOX_H / 2 - 0.06, Y1 + BOX_H / 2 + 0.06], [BOX_TOP - 0.3, BOX_TOP]]) scene.add(ringStrip([{ d: GLASS_D + 0.02, y: y0 }, { d: GLASS_D + 0.02, y: y1 }], frame, { cast: false }));
+    const rails = [[Y1, Y1 + 0.3], [Y1 + BOX_H / 2 - 0.06, Y1 + BOX_H / 2 + 0.06], [BOX_TOP - 0.3, BOX_TOP]].map(([y0, y1]) => ringStrip([{ d: GLASS_D + 0.02, y: y0 }, { d: GLASS_D + 0.02, y: y1 }], frame, { cast: false }));
+    rails.forEach(r => scene.add(r)); mergeStatic(scene, rails);                  // the 3 frame rails share one material: one Mesh (the glass strip stays separate: transparent, picked)
 
     const UNITS = 56, dummy = new THREE.Object3D();
     const divGeo = new THREE.BoxGeometry(0.25, BOX_H, BOX_DEPTH);

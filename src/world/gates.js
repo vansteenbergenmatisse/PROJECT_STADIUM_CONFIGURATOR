@@ -15,6 +15,7 @@ import { TAU, ACCESS_ANGLES, FACADE_D } from '../config/constants.js';
 import { shapePoint, arcTable, arcAt } from '../data/bowl-math.js';
 import { ringStrip } from '../core/geometry.js';
 import { std, dbl } from '../core/materials.js';
+import { mergeStatic } from '../core/merge.js';
 
 /**
  * Build the 4 lettered entrances, the 4 numbered exits, the perimeter ramp-wall (interrupted by the access roads) and the 22 planters.
@@ -27,6 +28,7 @@ export function buildGates(ctx) {
   /* ---- gates: 4 ENTRANCES where the access roads arrive (green) and 4 EXITS halfway between them (red). Each gate = a porch block with a dark opening, a big
      lit sign above it and, for entrances, a green paved apron the road runs over. They sit on the same plan angles as the roads / aisles (constant theta = straight radial line). */
   const ACCESS_ANGLES = [0.35, 1.9, 3.45, 5.0];
+  const mergeList = [];                                                 // perimeter wall arcs: merged per material at the end (core/merge.js); the rotated porches and openings stay separate
   {
     const signTex = (txt, bg) => { const c = document.createElement('canvas'); c.width = 768; c.height = 144; const g = c.getContext('2d');
       g.fillStyle = bg; g.fillRect(0, 0, 768, 144); g.strokeStyle = '#fff'; g.lineWidth = 6; g.strokeRect(9, 9, 750, 126);
@@ -55,7 +57,7 @@ export function buildGates(ctx) {
     for (let i = 0; i < 4; i++) arcs.push([gaps[i] + 0.16, (i < 3 ? gaps[i + 1] : gaps[0] + TAU) - 0.16]);
     for (const [a0, a1] of arcs) {
       const prof = [{ d: FACADE_D + 21, y: 0.1 }, { d: FACADE_D + 21, y: 1.8 }, { d: FACADE_D + 27, y: 1.8 }, { d: FACADE_D + 27, y: 0.1 }];
-      scene.add(ringStrip(prof, wallM, { N: 200, t0: a0, t1: a1 }));
+      const wallArc = ringStrip(prof, wallM, { N: 200, t0: a0, t1: a1 }); scene.add(wallArc); mergeList.push(wallArc);
     }
     // planters with small trees along the plaza
     const SPUR_PTS = gaps.map(g => shapePoint(g, FACADE_D + 18.5, [0, 0]));
@@ -76,4 +78,5 @@ export function buildGates(ctx) {
     });
     beds.receiveShadow = true; crowns.castShadow = true; crowns.receiveShadow = true; scene.add(beds, crowns);
   }
+  mergeStatic(scene, mergeList);                                        // 4 wall arcs -> 1 (built in world coordinates, bit-exact merge)
 }

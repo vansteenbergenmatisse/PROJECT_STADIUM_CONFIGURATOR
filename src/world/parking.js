@@ -16,6 +16,7 @@ import { TAU, A0, B0, FACADE_D, PARK_IN, PARK_OUT, Y_LOT, Y_MARK, ACCESS_ANGLES 
 import { shapePoint, arcTable, arcAt, sAtTheta, thetaAtS } from '../data/bowl-math.js';
 import { ringStrip } from '../core/geometry.js';
 import { std, dbl } from '../core/materials.js';
+import { mergeStatic } from '../core/merge.js';
 
 /**
  * Build the car park: asphalt ring, bay lines, markings, hatch strips, signs, fence, gate portals, 4 tinted lots, kerb islands, bushes, lot signs and the 50 parked cars.
@@ -26,6 +27,7 @@ import { std, dbl } from '../core/materials.js';
  */
 export function buildParking(ctx, { curves, spurSamples, outsideStadium }) {
   const { scene, canvasTex, MAX_ANISO } = ctx;
+  const mergeList = [];                                                 // static, non-pickable strips that share a material: merged into one Mesh per material at the end of this function (core/merge.js, fewer draw calls, same picture)
   /* ---- parking ring around the arena: paved surface + painted bays (the tinted lots, islands, signs and the 50 cars are added by the PARKING LOTS block right after the bay lines) ---- */
   const ra = rng(777);                                                  // own rng: the shared one drives the trees, so using it here would move them
   const asphaltTex = canvasTex(512, 512, (g, w, h) => {                  // car-park asphalt: neutral mid-grey, fine grain and a few very faint wear patches (no cracks, no big dark blobs: they read as dirt from above)
@@ -71,7 +73,7 @@ export function buildParking(ctx, { curves, spurSamples, outsideStadium }) {
     const arcsBetweenRoads = (d, m) => { const tab = arcTable(d); return ACCESS_ANGLES.map((a, i) => { const t0 = thetaMoved(tab, a, m); let t1 = thetaMoved(tab, ACCESS_ANGLES[(i + 1) % 4], -m); while (t1 <= t0) t1 += TAU; return [t0, t1]; }); };
     // 1) yellow head lines of the bays and the solid kerb line on the plaza edge (thin ring strips cut at the roads)
     const LINES = [[PARK_IN + 0.2, 0.34], [FACADE_D + 27.6, 0.16], [FACADE_D + 32.9, 0.16], [FACADE_D + 37.8, 0.16], [FACADE_D + 47.6, 0.16], [FACADE_D + 52.5, 0.16], [FACADE_D + 57.9, 0.16]];
-    for (const [d0, w] of LINES) for (const [t0, t1] of arcsBetweenRoads(d0, LINE_CUT)) scene.add(ringStrip([{ d: d0, y: Y_LINE }, { d: d0 + w, y: Y_LINE }], yellow, { cast: false, N: 120, t0, t1 }));
+    for (const [d0, w] of LINES) for (const [t0, t1] of arcsBetweenRoads(d0, LINE_CUT)) { const ln = ringStrip([{ d: d0, y: Y_LINE }, { d: d0 + w, y: Y_LINE }], yellow, { cast: false, N: 120, t0, t1 }); scene.add(ln); mergeList.push(ln); }
     // 2) keep-clear hatch strips along the roads (only the part inside the ring)
     const hatchTex = canvasTex(128, 128, (g, w, h) => {
       g.fillStyle = '#f2c230'; g.fillRect(0, 0, w, 12); g.fillRect(0, h - 12, w, 12);
@@ -100,7 +102,7 @@ export function buildParking(ctx, { curves, spurSamples, outsideStadium }) {
     for (const c of curves.slice(1)) {
       const pts = c.getSpacedPoints(400).filter(inRing);
       for (const side of [1, -1]) {
-        scene.add(offsetStrip(pts, side * 6.6, side * 8.5, hatch));
+        const hs = offsetStrip(pts, side * 6.6, side * 8.5, hatch); scene.add(hs); mergeList.push(hs);          // the 8 hatch strips share one material
         for (const f of [0.12, 0.88]) {                                                // two NO PARKING signs per side, facing along the road
           const i = Math.floor(f * (pts.length - 1)), a = pts[i], b = pts[Math.min(pts.length - 1, i + 1)]; let tx = b.x - a.x, tz = b.z - a.z; const l = Math.hypot(tx, tz) || 1; tx /= l; tz /= l;
           const gx = a.x - tz * side * 9.2, gz = a.z + tx * side * 9.2, grp = new THREE.Group(); grp.position.set(gx, Y_LOT, gz); grp.rotation.y = Math.atan2(tx, tz);
@@ -115,7 +117,7 @@ export function buildParking(ctx, { curves, spurSamples, outsideStadium }) {
       const s0 = sAtTheta(tabF, t0 % TAU); let s1 = sAtTheta(tabF, t1 % TAU); if (s1 <= s0) s1 += tabF.L;
       const len = s1 - s0, tex = meshTex.clone(); tex.needsUpdate = true; tex.repeat.set(len / 1.1, FH / 1.1);
       scene.add(ringStrip([{ d: FENCE_D, y: Y_LOT }, { d: FENCE_D, y: Y_LOT + FH }], new THREE.MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.4, side: THREE.DoubleSide }), { cast: false, receive: false, N: 140, t0, t1 }));
-      scene.add(ringStrip([{ d: FENCE_D - 0.04, y: Y_LOT + FH }, { d: FENCE_D + 0.04, y: Y_LOT + FH + 0.06 }], railM, { cast: false, receive: false, N: 140, t0, t1 }));
+      const rail = ringStrip([{ d: FENCE_D - 0.04, y: Y_LOT + FH }, { d: FENCE_D + 0.04, y: Y_LOT + FH + 0.06 }], railM, { cast: false, receive: false, N: 140, t0, t1 }); scene.add(rail); mergeList.push(rail);   // the 4 top rails share railM
       const n = Math.max(1, Math.round(len / 6));
       for (let i = 0; i <= n; i++) { const a = arcAt(tabF, ((s0 + len * i / n) % tabF.L) / tabF.L); postPts.push([a.x, a.z]); }
     }
@@ -192,5 +194,6 @@ export function buildParking(ctx, { curves, spurSamples, outsideStadium }) {
     carBody.instanceColor.needsUpdate = true;
     window.__parkedCars = NC;                                              // for the test console
   }
+  mergeStatic(scene, mergeList);                                        // 28 yellow lines -> 1, 8 hatch strips -> 1, 4 fence rails -> 1 (all built in world coordinates, so the merge is bit-exact). Rotated props (sign poles, gate pillars, kerbs) stay separate: see core/merge.js
   return { parkingMesh };
 }

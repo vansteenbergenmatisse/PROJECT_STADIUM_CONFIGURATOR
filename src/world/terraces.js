@@ -13,6 +13,7 @@
 import { tiers, RUN, T1_END_D, Y1, GLASS_D, BACK_D, T2_END_D, Y2, WALK2, T3_END_D, Y3, FACADE_D, FASCIA_TOP, BOX_TOP } from '../config/constants.js';
 import { ringStrip } from '../core/geometry.js';
 import { dbl } from '../core/materials.js';
+import { mergeStatic } from '../core/merge.js';
 
 /**
  * Build the concrete steps of the three tiers, the fascia rails and the under-skybox floor, ceiling and back wall.
@@ -62,12 +63,14 @@ export function buildTerraces(ctx) {
     terraces.push(ringStrip(upper, concrete));
     terraces.forEach(t => scene.add(t));
 
-    // charcoal fascia / rails
-    scene.add(ringStrip([{ d: -0.3, y: 1.5 }, { d: -0.3, y: 2.6 }], blueFascia));
-    scene.add(ringStrip([{ d: GLASS_D, y: BOX_TOP }, { d: GLASS_D, y: FASCIA_TOP + 1.0 }], blueFascia));
+    // charcoal fascia / rails (4 strips with the same material: merged into one Mesh below; they are not pickable, the pickable terraces above are never merged)
+    const fascia = [];
+    fascia.push(ringStrip([{ d: -0.3, y: 1.5 }, { d: -0.3, y: 2.6 }], blueFascia));
+    fascia.push(ringStrip([{ d: GLASS_D, y: BOX_TOP }, { d: GLASS_D, y: FASCIA_TOP + 1.0 }], blueFascia));
     scene.add(ringStrip([{ d: GLASS_D - 0.05, y: FASCIA_TOP + 1.0 }, { d: GLASS_D + 0.2, y: FASCIA_TOP + 1.0 }], white));
-    scene.add(ringStrip([{ d: tiers[2].d0 - 0.1, y: Y2 }, { d: tiers[2].d0 - 0.1, y: Y2 + 1.2 }], blueFascia));
-    scene.add(ringStrip([{ d: T3_END_D, y: Y3 }, { d: T3_END_D, y: Y3 + 1.1 }], blueFascia));
+    fascia.push(ringStrip([{ d: tiers[2].d0 - 0.1, y: Y2 }, { d: tiers[2].d0 - 0.1, y: Y2 + 1.2 }], blueFascia));
+    fascia.push(ringStrip([{ d: T3_END_D, y: Y3 }, { d: T3_END_D, y: Y3 + 1.1 }], blueFascia));
+    fascia.forEach(f => scene.add(f)); mergeStatic(scene, fascia);
     // under-skybox floor, ceiling, back wall
     scene.add(ringStrip([{ d: GLASS_D, y: Y1 + 0.02 }, { d: BACK_D, y: Y1 + 0.02 }], dbl(0x55585f, { roughness: 0.55 }), { cast: false }));
     scene.add(ringStrip([{ d: GLASS_D, y: BOX_TOP }, { d: BACK_D, y: BOX_TOP }], concreteDark));
