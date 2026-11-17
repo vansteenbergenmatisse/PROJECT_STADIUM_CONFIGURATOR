@@ -1,10 +1,10 @@
 <!doctype html>
 <!--
   STADIUM - three.js (r160, jsDelivr CDN import map) as plain ES modules: this page + css/*.css + src/**/*.js. No build step, no package manager. Live: https://vansteenbergenmatisse.github.io/PROJECT_STADIUM_CONFIGURATOR/ (GitHub Pages from main).
-  Files: this page + src/ (script, see SCRIPT MAP below) + css/ + assets/loader.html (loading screen, loaded in an iframe by relative path so the page also works from a sub-path).
+  Files: this page + src/ (script, see SCRIPT MAP below) + css/. The loading screen is inline markup in <body> (SVG + CSS, no request), styled by css/loader.css and driven by src/ui/loader.js.
   CSS: no inline <style> any more. css/*.css are linked in this exact order (the original single stylesheet cut into contiguous chunks, so the cascade is unchanged):
-    tokens.css (--ff-* variables) | base.css (resets, focus ring) | hud.css (view buttons, .btn, tabs) | panel.css (price panel, ticket cards, .badge) | scoreboard.css (#scorecard) |
-    checkout.css (#modal pop-up) | overlays.css (vignette, loading screen, .sr-only, fold buttons) | responsive.css (phone layout, LAST on purpose). Each file has its own header comment.
+    tokens.css (--ff-* variables) | loader.css (loading screen #loading) | base.css (resets, focus ring) | hud.css (view buttons, .btn, tabs) | panel.css (price panel, ticket cards, .badge) | scoreboard.css (#scorecard) |
+    checkout.css (#modal pop-up) | overlays.css (vignette, .sr-only, fold buttons) | responsive.css (phone layout, LAST on purpose). Each file has its own header comment.
   Keep this comment, every /* ---- section ---- */ comment and docs/book/*.md in sync with the code (see CLAUDE.md).
   After a context clear: read CLAUDE.md, docs/book/00-index.md, then this comment.
 
@@ -30,7 +30,7 @@
       the 4 boundaries, a signpost per lot, 50 parked cars (13 / 13 / 12 / 12; 3 InstancedMeshes) parked on ONE shared bay grid (BAY_EDGES: radial side lines through all rows, same grid for cars). PARKING MARKINGS + FENCE block: YELLOW bay lines = where you may park, YELLOW HATCH strips with
       NO PARKING signs along both sides of every access road + a solid yellow line on the plaza edge = where you may not, a chain-link fence round the outer edge with a gate portal
       ("PARKING - ENTRANCE") over each access road. HEIGHTS (Y_LOT / Y_MARK / Y_PATH / Y_ROAD / Y_DASH constants) lift lot and roads off the meadow so they no longer z-fight with it.
-    - BOOT (batch 25): the page paints a loading screen first (#loading = assets/loader.html in an iframe, never waited for), three.js is modulepreloaded, the web font does not block rendering,
+    - BOOT (batch 25): the page paints a loading screen first (#loading = inline SVG + CSS markup, css/loader.css, progress bar driven by src/ui/loader.js from the boot marks), three.js is modulepreloaded, the web font does not block rendering,
       the build yields to the browser between big sections (yieldToPaint) and window.__boot holds millisecond marks per section. The loader fades out after the first drawn frame.
     - FOLD BUTTONS (batch 25): the price panel, the scoreboard and the view buttons each have a Hide button (.fold, class is-folded). Hidden = the card is gone, only a 28 px "+" dot stays at its corner; H hides / shows all.
     - Sky: blue gradient dome with sun disc + glow, drifting procedural clouds (shader), light blue haze; all re-centred on the camera every frame (updateSky).
@@ -64,7 +64,7 @@
     - Photo mode (AI re-render through fal) existed in batches 10-19 and was REMOVED from this file in batch 20. proxy/ (server, .env, cache) is still in the project but unused by the page.
 
   SCRIPT MAP (<script type="module" src="./src/main.js">; own imports are relative with .js; the import map above stays here; every module has an @fileoverview header):
-    src/main.js         thin boot file: window.__boot, mark, yieldToPaint, the builders in the ORIGINAL order, then creates and wires the modules below, prepareStaticScene, startLoop, removes the loading screen
+    src/main.js         thin boot file: window.__boot, mark (also moves the loader bar), yieldToPaint, the builders in the ORIGINAL order, then creates and wires the modules below, prepareStaticScene, startLoop, hides the loading screen (hideLoader)
     src/config/constants.js   bowl numbers, stand layout (tiers, FACADE_D, ROOF_*), ACCESS_ANGLES, seat spacing, park heights / ring (Y_*, PARK_IN / PARK_OUT)
     src/data/           bowl-math.js (shapePoint, arcTable, theta maths) | seat-layout.js (forEachSeat, picking grid) | pricing.js (price model) | display-prices.js (availability, ranges, suite and parking prices)
     src/core/           rng.js (the ONE shared seeded rand, hash) | materials.js | textures.js | geometry.js (ringStrip, paintGeo) | renderer.js | scene.js (scene, baked env map, camera, rig) | lighting.js (SUN_POS, lights) | ctx.js (createCtx) | listeners.js (one AbortController listener group) | loop.js (bake + render loop)
@@ -73,7 +73,7 @@
     src/sim/            match.js (11 v 11 demo match, Math.random on purpose) | scoreboard-model.js (score / clock text formats, pure)
     src/interaction/    camera-rig.js (OVERVIEW / AERIAL / LONG_STAND, flyTo, head turn) | seat-paint.js (hover / selection colours) | roof-control.js (roof fade, toggle) | selection.js (overview, aerial, descent, section, seat,
                         suite, lot, back; section-first rule) | picking.js (ray -> seat / suite / lot) | hover.js | input.js (all keyboard and pointer handlers)
-    src/ui/             view-buttons | price-panel (renderSelection) | hover-card (#tip) | ticket-card | checkout (demo pop-up, cart, payment, ticket) | scoreboard-view | fold-buttons (+ H key)
+    src/ui/             loader (loading screen progress + hide) | view-buttons | price-panel (renderSelection) | hover-card (#tip) | ticket-card | checkout (demo pop-up, cart, payment, ticket) | scoreboard-view | fold-buttons (+ H key)
     src/debug/expose.js window.__stadium (19 keys, unchanged)
     src/state/state.js  the shared mutable state (nav, selection, hover, buy, tween, look, thumbWanted, roofFaded)
     RNG ORDER (do not reorder): ground, pitch, terraces, facade, shops, trees draw from the shared rand; parking uses rng(777) and rng(4242); matchday uses rng(7777). Shops append to roadSamples before the trees read it.
@@ -95,11 +95,12 @@
      The web font is loaded without blocking (preload + swap to stylesheet; system-ui is the fallback), and the three.js modules are preloaded so the download starts before the importmap is used. -->
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"></noscript>
-<link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js">
+<link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js">
 <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/utils/BufferGeometryUtils.js">
 <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/objects/Sky.js">
 <!-- Stylesheets: order matters (one cascade, split by purpose; see the CSS map in the header comment). Do not reorder. -->
 <link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/loader.css">
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/hud.css">
 <link rel="stylesheet" href="css/panel.css">
@@ -109,13 +110,13 @@
 <link rel="stylesheet" href="css/responsive.css">
 <script type="importmap">
 { "imports": {
-  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js",
   "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
 } }
 </script>
 </head>
 <body>
-<div id="loading" role="status"><iframe src="assets/loader.html" title="" tabindex="-1" aria-hidden="true"></iframe><span class="sr-only">Building the stadium.</span></div>
+<div id="loading" role="status"><svg viewBox="0 0 200 140" aria-hidden="true"><path pathLength="1" d="M192.0 70.0L191.4 82.9L189.6 91.9L186.6 99.6L182.4 106.4L177.0 112.3L170.5 117.5L162.8 121.9L154.0 125.5L143.9 128.3L132.5 130.4L119.2 131.6L100.0 132.0L80.8 131.6L67.5 130.4L56.1 128.3L46.0 125.5L37.2 121.9L29.5 117.5L23.0 112.3L17.6 106.4L13.4 99.6L10.4 91.9L8.6 82.9L8.0 70.0L8.6 57.1L10.4 48.1L13.4 40.4L17.6 33.6L23.0 27.7L29.5 22.5L37.2 18.1L46.0 14.5L56.1 11.7L67.5 9.6L80.8 8.4L100.0 8.0L119.2 8.4L132.5 9.6L143.9 11.7L154.0 14.5L162.8 18.1L170.5 22.5L177.0 27.7L182.4 33.6L186.6 40.4L189.6 48.1L191.4 57.1Z"/><path class="in" pathLength="1" d="M166.0 70.0L165.6 77.9L164.3 83.4L162.1 88.2L159.1 92.3L155.2 95.9L150.6 99.1L145.1 101.8L138.7 104.0L131.5 105.8L123.3 107.0L113.8 107.7L100.0 108.0L86.2 107.7L76.7 107.0L68.5 105.8L61.3 104.0L54.9 101.8L49.4 99.1L44.8 95.9L40.9 92.3L37.9 88.2L35.7 83.4L34.4 77.9L34.0 70.0L34.4 62.1L35.7 56.6L37.9 51.8L40.9 47.7L44.8 44.1L49.4 40.9L54.9 38.2L61.3 36.0L68.5 34.2L76.7 33.0L86.2 32.3L100.0 32.0L113.8 32.3L123.3 33.0L131.5 34.2L138.7 36.0L145.1 38.2L150.6 40.9L155.2 44.1L159.1 47.7L162.1 51.8L164.3 56.6L165.6 62.1Z"/><path class="pt" pathLength="1" d="M65 48H135V92H65ZM100 48V92"/></svg><div class="bar"><i></i></div><p class="txt" aria-hidden="true">Building the stadium</p><span class="sr-only">Building the stadium.</span></div>
 <div id="vignette" aria-hidden="true"></div>
 <header id="hud">
   <h1>Stadium</h1>

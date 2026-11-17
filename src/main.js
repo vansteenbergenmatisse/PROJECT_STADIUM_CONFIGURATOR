@@ -1,6 +1,6 @@
 // @ts-check
 /**
- * @fileoverview main: the thin boot file (entry module): creates the context, calls the builders in the ORIGINAL order, wires interaction / UI / simulation, starts the loop, removes the loading screen.
+ * @fileoverview main: the thin boot file (entry module): creates the context, calls the builders in the ORIGINAL order, wires interaction / UI / simulation, starts the loop, hides the loading screen (ui/loader.js).
  *
  * WHY: everything else lives in its own module (see the SCRIPT MAP in index.html). What remains here is the one thing only the entry point can do: decide the ORDER. The order is part of the scene,
  *      because the world builders share one seeded random generator (core/rng.js) and the scene graph order is part of the parity fingerprint.
@@ -50,15 +50,16 @@ import { createScoreboardView } from './ui/scoreboard-view.js';
 import { wireFoldButtons } from './ui/fold-buttons.js';
 import { exposeDebug } from './debug/expose.js';
 import { state } from './state/state.js';
+import { createLoader, setProgress, progressFromMark, hideLoader } from './ui/loader.js';
 
 /* ------------------------------------------------------------------ boot: loading screen first, scene second
    The scene is built synchronously (a few hundred ms to seconds of main-thread work). `yieldToPaint()` hands the thread back so the browser can draw the loading screen before the next heavy block
    starts (rAF when the tab is visible, a short timer otherwise so a background tab still finishes). `mark()` records milliseconds since navigation start in window.__boot for profiling. */
 const boot = window.__boot = [];
-const mark = name => boot.push([name, Math.round(performance.now())]);
+const mark = name => { boot.push([name, Math.round(performance.now())]); const f = progressFromMark(name); if (f) setProgress(f); };   // the 9 scene marks also move the loader bar
+createLoader();
 const yieldToPaint = () => new Promise(done => { const t = setTimeout(done, 80); requestAnimationFrame(() => { clearTimeout(t); setTimeout(done, 0); }); });
-mark('module start');
-await yieldToPaint();
+mark('module start');await yieldToPaint();
 
 /* ------------------------------------------------------------------ renderer / scene / camera rig / sky / lights: built by src/core and src/world/sky.js (see their headers) */
 const ctx = createCtx();
@@ -138,8 +139,7 @@ document.getElementById('stats').textContent = `${seatCount.toLocaleString()} se
 
 mark('scene built');
 {                                                                  // remove the loading screen after the first frame has really been drawn (two rAFs), fading out unless reduced motion is on
-  const el = document.getElementById('loading');
-  requestAnimationFrame(() => requestAnimationFrame(() => { mark('first frame'); el.classList.add('done'); setTimeout(() => el.remove(), 260); }));
+  requestAnimationFrame(() => requestAnimationFrame(() => { mark('first frame'); hideLoader(); }));   // hideLoader fades the screen (class done) and removes it; safe if it is already gone
 }
 if (location.hash === '#descent') setTimeout(selection.descent, 1500);      // autoplay for capture: index.html#descent
 
