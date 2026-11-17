@@ -1,0 +1,12 @@
+# macOS
+.DS_Store
+
+# Local-only: the unused photo proxy (holds an API key in .env, a render cache and a spend file)
+# and a 6.9 MB reference screenshot. Neither is needed to run the page.
+proxy/
+reference-3d-frame-aerial.png
+
+# Editor / tooling
+.vscode/
+.idea/
+*.log
