@@ -228,6 +228,33 @@
   .method:has(input:checked) { border-color:var(--ff-charcoal-900); box-shadow:inset 0 0 0 1px var(--ff-charcoal-900); } .method input { width:20px; height:20px; accent-color:var(--ff-charcoal-900); }
   .sheet .field { margin-top:10px; } .sheet .field input { font-size:16px; } .sheet .two { display:flex; gap:10px; } .sheet .two .field { flex:1; } .sheet .two .field.narrow { flex:0 0 38%; }
   .secure { display:flex; gap:8px; align-items:flex-start; justify-content:center; margin:14px 0 0; font-size:12px; line-height:1.5; color:var(--ff-slate-400); text-align:left; } .secure svg { width:16px; height:16px; flex:none; margin-top:1px; }
+  /* ticket details: Deep Charcoal sheet, translucent route card, white pass with notches and a bar code */
+  .sheet.dark { background:var(--ff-charcoal-900); color:#fff; border:1px solid rgba(255,255,255,.1); }
+  .sheet.dark .iconbtn:hover { background:rgba(255,255,255,.1); } .sheet.dark .sheet-head h2 { text-align:center; }
+  .sheet.dark small { display:block; font-size:12px; line-height:1.4; font-weight:500; opacity:.6; } .sheet.dark b { display:block; font-size:18px; line-height:1.3; font-weight:800; }
+  .troute { border:1px solid rgba(255,255,255,.22); border-radius:var(--ff-radius-2xl); padding:16px 18px; background:rgba(255,255,255,.05); position:relative; }
+  .tr-top, .tr-bot { display:flex; justify-content:space-between; align-items:center; gap:10px; } .tr-top { padding-bottom:14px; border-bottom:1px dashed rgba(255,255,255,.3); } .tr-bot { padding-top:14px; }
+  .tr-r, .tr-bot > div:last-child { text-align:right; } .tr-bot > div:nth-child(2) { text-align:center; }
+  .tr-mid { flex:1; display:flex; align-items:center; gap:6px; } .tr-mid i { flex:1; border-top:1px dashed rgba(255,255,255,.5); } .tball { width:34px; height:34px; border-radius:50%; border:1px solid rgba(255,255,255,.7); display:grid; place-items:center; } .tball svg { width:18px; height:18px; }
+  .tpass { margin-top:16px; background:var(--ff-white); color:var(--ff-charcoal-900); border-radius:var(--ff-radius-2xl); overflow:hidden; }
+  .tpart { position:relative; padding:18px 20px; } .tpart.notched { border-top:1px dashed var(--ff-line-300); background:var(--ff-sand-50); }
+  .tpart.notched::before, .tpart.notched::after { content:""; position:absolute; top:-10px; width:20px; height:20px; border-radius:50%; background:var(--ff-charcoal-900); } .tpart.notched::before { left:-10px; } .tpart.notched::after { right:-10px; }
+  .tpass small { display:block; font-size:12px; line-height:1.4; color:var(--ff-slate-400); font-weight:500; opacity:1; } .tpass b { display:block; font-size:17px; line-height:1.35; font-weight:800; }
+  .tp2, .tp3 { display:flex; justify-content:space-between; gap:12px; } .tp3 + .tp3 { margin-top:16px; } .tpass .r { text-align:right; }
+  .tpart.center { text-align:center; } .bp { margin:0 0 10px; font-size:12px; font-weight:800; letter-spacing:.14em; color:var(--ff-charcoal-900); } .barcode { height:64px; } .barcode svg { width:100%; height:100%; fill:var(--ff-charcoal-900); stroke:none; }
+  .btn--light { background:#fff; border-color:#fff; color:var(--ff-charcoal-900); } .btn--light:hover { background:var(--ff-sand-100); }
+  @media (max-width:760px) { #modal { padding:0; align-items:end; } .sheet { width:100%; border-radius:var(--ff-radius-2xl) var(--ff-radius-2xl) 0 0; max-height:94dvh; padding-bottom:max(20px, env(safe-area-inset-bottom)); } }
+  #vignette { position:fixed; inset:0; pointer-events:none; z-index:0; background:radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0) 62%, rgba(10,14,28,.22) 100%); }
+  #help { position:fixed; left:16px; bottom:16px; z-index:2; padding:8px 12px; max-width:calc(100vw - 372px); background:var(--ff-white); border:1px solid var(--ff-line-200); border-radius:var(--ff-radius-sm);
+    box-shadow:var(--ff-shadow-xs); font-size:12px; line-height:1.6; color:var(--ff-slate-500); }
+  /* loading screen: shown from the first byte. The solid colour is the loader's own grass colour (so there is no flash), the animation is assets/loader.html in an iframe that loads in parallel
+     with three.js and is never waited for. It fades out (200 ms, none with reduced motion) after the first rendered frame; this is the only place the UI uses a transition. */
+  #loading { position:fixed; inset:0; z-index:10; background:#4AA44E; }
+  #loading iframe { position:absolute; inset:0; width:100%; height:100%; border:0; display:block; }
+  #loading.done { opacity:0; transition:opacity .2s linear; pointer-events:none; }
+  @media (prefers-reduced-motion:reduce) { #loading.done { transition:none; } }
+  .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+
 </style>
 </head>
 <body>
