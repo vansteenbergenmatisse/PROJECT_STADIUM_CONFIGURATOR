@@ -88,8 +88,9 @@ export function createMatch({ scene }) {
     const carrier = ball.kind === 'carry' ? ball.owner : -1;
     const bx = ball.x, bz = ball.z;
     let chaser0 = -1, chaser1 = -1, d0 = 1e9, d1 = 1e9;
-    P.forEach((p, i) => { if (p.role === 0) return; const d = Math.hypot(p.x - bx, p.z - bz); if (p.team === 0 && d < d0) { d0 = d; chaser0 = i; } if (p.team === 1 && d < d1) { d1 = d; chaser1 = i; } });
-    P.forEach((p, i) => {
+    for (let i = 0; i < P.length; i++) { const p = P[i]; if (p.role === 0) continue; const d = Math.hypot(p.x - bx, p.z - bz); if (p.team === 0 && d < d0) { d0 = d; chaser0 = i; } if (p.team === 1 && d < d1) { d1 = d; chaser1 = i; } }
+    for (let i = 0; i < P.length; i++) {       // plain loops instead of forEach: no closure allocated per frame
+      const p = P[i];
       const dir = p.team === 0 ? 1 : -1, pull = p.role === 0 ? 0.04 : p.role < 5 ? 0.28 : p.role < 9 ? 0.45 : 0.6;
       let tx = p.hx + (bx - p.hx) * pull, tz = p.hz + (bz - p.hz) * pull * 0.8, sp = 5.2;
       if (i === carrier) { tx = HX * dir * 1.2; tz = p.z * 0.9; sp = 5.8; }                                   // dribble toward the opponent goal
@@ -101,11 +102,13 @@ export function createMatch({ scene }) {
       p.x = Math.max(-HX + 0.5, Math.min(HX - 0.5, p.x + p.vx * dt)); p.z = Math.max(-HZ + 0.5, Math.min(HZ - 0.5, p.z + p.vz * dt));
       const sp2 = Math.hypot(p.vx, p.vz); if (sp2 > 0.4) { const ty = Math.atan2(p.vx, p.vz); let dy = ty - p.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); p.yaw += dy * Math.min(1, dt * 8); }
       p.ph += dt * (2 + sp2 * 1.6);
-    });
+    }
   }
   const o3 = new THREE.Object3D(), lg = new THREE.Object3D(), M = new THREE.Matrix4();
+  const DYN = [bodies, heads, legs, blobs];                          // hoisted: the instanced meshes flagged after each write
   function writeMatrices() {
-    P.forEach((p, i) => {
+    for (let i = 0; i < P.length; i++) {
+      const p = P[i];
       const sp2 = Math.hypot(p.vx, p.vz), bob = Math.abs(Math.sin(p.ph)) * 0.05 * Math.min(1, sp2 / 4);
       o3.position.set(p.x, Y0 + bob, p.z); o3.rotation.set(Math.min(0.25, sp2 * 0.04), p.yaw, 0, 'YXZ'); o3.scale.setScalar(SC); o3.updateMatrix();
       bodies.setMatrixAt(i, o3.matrix); heads.setMatrixAt(i, o3.matrix);
@@ -114,8 +117,8 @@ export function createMatch({ scene }) {
         M.multiplyMatrices(o3.matrix, lg.matrix); legs.setMatrixAt(i * 2 + s, M);
       }
       o3.position.set(p.x, Y0 + 0.03, p.z); o3.rotation.set(0, 0, 0); o3.scale.setScalar(1); o3.updateMatrix(); blobs.setMatrixAt(i, o3.matrix);
-    });
-    [bodies, heads, legs, blobs].forEach(m => { m.instanceMatrix.needsUpdate = true; });
+    }
+    for (let k = 0; k < 4; k++) DYN[k].instanceMatrix.needsUpdate = true;
     ballM.position.set(ball.x, Y0 + ball.y, ball.z);
   }
   kickoff(0); writeMatrices(); bodies.instanceColor.needsUpdate = true; legs.instanceColor.needsUpdate = true;

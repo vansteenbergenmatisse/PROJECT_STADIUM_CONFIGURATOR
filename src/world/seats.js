@@ -67,6 +67,8 @@ export function buildSeats(ctx) {
     });
     seats.instanceMatrix.needsUpdate = true; seats.instanceColor.needsUpdate = true;
     seats.computeBoundingSphere();
+    // the instance matrices never change after this point (only instanceColor is re-written, on hover / selection), so hint the GPU upload as static; instanceColor keeps its default (dynamic) usage
+    seats.instanceMatrix.setUsage(THREE.StaticDrawUsage);
   }
   // seats do NOT cast into the shadow map: tried in batch 19, re-baking 4.7 M seat triangles stalled the first frame of a flight for ~1.4 s in the test browser (contact shading stays baked in the vertex colours)
   scene.add(seats);

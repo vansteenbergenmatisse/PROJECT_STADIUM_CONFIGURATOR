@@ -26,7 +26,8 @@ export const ease = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) /
 /** Quintic in-out: slow start, long glide, soft landing (selection flights). */
 export const easePremium = t => t < 0.5 ? 16 * t * t * t * t * t : 1 - Math.pow(-2 * t + 2, 5) / 2;
 
-const YAW_MAX = Math.PI * 0.62, PITCH_MIN = -0.6, PITCH_MAX = 0.4, UP = new THREE.Vector3(0, 1, 0);
+const YAW_MAX = Math.PI * 0.62, PITCH_MIN = -0.6, PITCH_MAX = 0.4, UP = new THREE.Vector3(0, 1, 0),
+      _v = new THREE.Vector3(), _right = new THREE.Vector3();   // module-level scratch vectors for updateLook (no allocation per frame)
 
 /**
  * Create the camera rig.
@@ -50,7 +51,7 @@ export function createCameraRig({ camera, controls }, { setView }) {
     if (nav.level !== 'seat') { look.ready = false; return; }
     if (state.tween) return;
     if (!look.ready) { look.base.copy(controls.target).sub(camera.position).normalize(); look.yaw = 0; look.pitch = 0; look.ready = true; }
-    const v = look.base.clone().applyAxisAngle(UP, look.yaw), right = new THREE.Vector3().crossVectors(v, UP).normalize();
+    const v = _v.copy(look.base).applyAxisAngle(UP, look.yaw), right = _right.crossVectors(v, UP).normalize();
     v.applyAxisAngle(right, look.pitch); controls.target.copy(camera.position).addScaledVector(v, 100);
   }
   /** Add yaw / pitch offsets (radians) to the head, clamped to +-0.62 pi yaw and -0.6 .. 0.4 rad pitch. */
