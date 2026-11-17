@@ -2056,6 +2056,41 @@ renderer.domElement.addEventListener('pointerup', e => {
   } else if (h.type === 'suite') selectSuite(h.u); else selectLot(h.lot);
 });
 
+/* ------------------------------------------------------------------ loop */
+addEventListener('resize', () => { fitFov(); renderer.setSize(innerWidth, innerHeight); });   // also fires on phone rotation
+camera.position.set(...OVERVIEW.pos); controls.target.set(...OVERVIEW.tgt); controls.update();   // first frame = top view
+// static-scene optimisations: bake the shadow map once (sun + casters never move; re-armed by the roof toggle),
+// bake object matrices, and make sure instanced bounds reflect the final matrices
+renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = true;
+// soft sky ambient (image-based) for matte materials, kept low per material because r160 has no scene.environmentIntensity;
+// glossy materials (seats, glass, cars) keep their own explicit envMap + intensity
+scene.environment = envTex;
+scene.traverse(o => { const ms = Array.isArray(o.material) ? o.material : o.material ? [o.material] : []; for (const m of ms) if (m.isMeshStandardMaterial && m.envMap == null && !m.userData.noIBL) m.envMapIntensity = 0.2; });
+scene.traverse(o => { if (o.userData.dynamic) return; if (o.isInstancedMesh) o.computeBoundingSphere(); o.updateMatrix(); o.matrixAutoUpdate = false; });
+scene.updateMatrixWorld(true);
+mark('bake done');
+await yieldToPaint();
+let lastT = performance.now(), firstRender = true;
+renderer.setAnimationLoop(() => {
+  const now = performance.now(), dt = Math.min(0.1, (now - lastT) / 1000); lastT = now;
+  if (tween) {
+    const k = Math.min(1, (now - tween.t0) / tween.ms), e = tween.ease(k);
+    camera.position.lerpVectors(tween.p0, tween.p1, e); controls.target.lerpVectors(tween.a0, tween.a1, e);
+    if (k >= 1) tween = null;
+  }
+  controls.update();
+  if (fansUpdate) fansUpdate(now / 1000);
+  match.update(dt); updateSky(now / 1000); updateLook(); updateScore();
+  renderer.render(scene, camera);
+  if (firstRender) { firstRender = false; mark('first render call'); }
+  if (thumbWanted && buy) {                                       // copy this finished frame (cover-cropped square) into the cart picture
+    thumbWanted = false; const c = document.createElement('canvas'), src = renderer.domElement, side = Math.min(src.width, src.height); c.width = c.height = 192;
+    c.getContext('2d').drawImage(src, (src.width - side) / 2, (src.height - side) / 2, side, side, 0, 0, 192, 192);
+    buy.thumb = c.toDataURL('image/jpeg', 0.8); const t = modalEl.querySelector('.thumb'); if (t) t.style.backgroundImage = `url(${buy.thumb})`;
+  }
+});
+document.getElementById('stats').textContent = `${seatCount.toLocaleString()} seats in 3 tiers`;
+
 </script>
 </body>
 </html>
