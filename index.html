@@ -255,6 +255,20 @@
   @media (prefers-reduced-motion:reduce) { #loading.done { transition:none; } }
   .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
 
+  /* ---- fold buttons (batch 25): every floating card (price panel, scoreboard, view buttons) can be put away and brought back. Folded = only the small button stays. ---- */
+  .fold { position:absolute; top:10px; right:10px; z-index:1; height:28px; padding:0 12px; border:1px solid var(--ff-line-200); border-radius:var(--ff-radius-pill); background:var(--ff-white); color:var(--ff-charcoal-900); font-size:12px; font-weight:600; line-height:1; cursor:pointer; }
+  .fold:hover { background:var(--ff-sand-100); }
+  .is-folded > :not(.fold) { display:none !important; }
+  .is-folded > .fold { position:static; }
+  /* Folded = the card is gone. Only a 28 px "+" dot stays at its corner so it can be brought back (or press H for all cards). */
+  #panel.is-folded, #hud.is-folded, #scorecard.is-folded { padding:0; width:auto; min-width:0; background:transparent; border:0; box-shadow:none; border-radius:0; overflow:visible; }
+  .is-folded > .fold { width:28px; padding:0; font-size:16px; line-height:1; opacity:.8; }
+  #scorecard.is-folded::before, #scorecard.is-folded::after { display:none; }
+  #hud { display:flex; align-items:center; gap:8px; }
+  #hud .fold { position:static; }
+  #views { min-width:0; }
+  @media (max-width:760px) { #hud.is-folded, #panel.is-folded { right:auto !important; } }   /* phones stretch both cards edge to edge: a folded card shrinks to its button */
+
 </style>
 </head>
 <body>
