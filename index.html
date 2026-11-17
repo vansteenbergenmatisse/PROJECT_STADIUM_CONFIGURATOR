@@ -353,6 +353,93 @@ const yieldToPaint = () => new Promise(done => { const t = setTimeout(done, 80);
 mark('module start');
 await yieldToPaint();
 
+/* ------------------------------------------------------------------ geometry of the bowl */
+// Plan shape = superellipse |x/a|^n + |z/b|^n = 1, offset outwards by distance d.
+const EXP = 2.4, A0 = 72, B0 = 52;          // half extents of the inner edge (metres)
+const PITCH_L = 105, PITCH_W = 68;
+const TAU = Math.PI * 2;
+const sgnPow = (v, p) => Math.sign(v) * Math.pow(Math.abs(v), p);
+function shapePoint(theta, d, out) {
+  out[0] = sgnPow(Math.cos(theta), 2 / EXP) * (A0 + d);
+  out[1] = sgnPow(Math.sin(theta), 2 / EXP) * (B0 + d);
+  return out;
+}
+
+// arc-length table so seats are spaced evenly along any offset curve
+const arcCache = new Map();
+function arcTable(d) {
+  const key = d.toFixed(3);
+  let t = arcCache.get(key);
+  if (t) return t;
+  const M = 2048, xs = new Float32Array(M + 1), zs = new Float32Array(M + 1), s = new Float32Array(M + 1), p = [0, 0];
+  for (let i = 0; i <= M; i++) {
+    shapePoint(i / M * TAU, d, p); xs[i] = p[0]; zs[i] = p[1];
+    if (i) s[i] = s[i - 1] + Math.hypot(xs[i] - xs[i - 1], zs[i] - zs[i - 1]);
+  }
+  t = { xs, zs, s, L: s[M], M };
+  arcCache.set(key, t);
+  return t;
+}
+const arcRes = { x: 0, z: 0, tx: 0, tz: 0 };
+function arcAt(t, frac) {
+  const target = frac * t.L;
+  let lo = 0, hi = t.M;
+  while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (t.s[mid] <= target) lo = mid; else hi = mid; }
+  const seg = (t.s[hi] - t.s[lo]) || 1, u = (target - t.s[lo]) / seg;
+  arcRes.x = t.xs[lo] + (t.xs[hi] - t.xs[lo]) * u;
+  arcRes.z = t.zs[lo] + (t.zs[hi] - t.zs[lo]) * u;
+  arcRes.tx = (t.xs[hi] - t.xs[lo]) / seg;
+  arcRes.tz = (t.zs[hi] - t.zs[lo]) / seg;
+  return arcRes;
+}
+
+// theta <-> arc length on one offset curve. A line of constant theta is a STRAIGHT line in plan (shapePoint is linear in d), so section
+// edges / aisles placed at fixed theta run perfectly straight from the first row to the last (placing them at a fixed fraction of each
+// row's own length made them wander sideways from row to row).
+function sAtTheta(t, th) { const g = th / TAU * t.M, i = Math.min(t.M - 1, Math.floor(g)), u = g - i; return t.s[i] + (t.s[i + 1] - t.s[i]) * u; }
+function thetaAtS(t, sv) {
+  let lo = 0, hi = t.M;
+  while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (t.s[mid] <= sv) lo = mid; else hi = mid; }
+  const seg = (t.s[hi] - t.s[lo]) || 1;
+  return (lo + (sv - t.s[lo]) / seg) / t.M * TAU;
+}
+
+// Extrude a (d, y) profile around the whole bowl. Each profile segment gets its own vertices (flat across, smooth along).
+function ringStrip(profile, material, { N = 480, cast = true, receive = true, t0 = 0, t1 = TAU, cumV = false } = {}) {
+  const p = [0, 0];
+  const rings = profile.map(pt => {
+    const a = new Float32Array((N + 1) * 3);
+    for (let j = 0; j <= N; j++) { shapePoint(t0 + (t1 - t0) * j / N, pt.d, p); a[j * 3] = p[0]; a[j * 3 + 1] = pt.y; a[j * 3 + 2] = p[1]; }
+    return a;
+  });
+  const cum = [0]; for (let k = 1; k < profile.length; k++) cum.push(cum[k - 1] + Math.hypot(profile[k].d - profile[k - 1].d, profile[k].y - profile[k - 1].y));
+  const total = cum[cum.length - 1] || 1;
+  const pos = [], uv = [], idx = []; let base = 0;
+  for (let k = 0; k < profile.length - 1; k++) {
+    if (Math.abs(profile[k].d - profile[k + 1].d) < 1e-6 && Math.abs(profile[k].y - profile[k + 1].y) < 1e-6) continue;
+    for (const v of rings[k]) pos.push(v);
+    for (const v of rings[k + 1]) pos.push(v);
+    // uv: u runs round the ring; v is the cumulative profile length (cumV) or 0..1 per segment (flipped on risers so v=0 is always the top edge)
+    let va = cumV ? cum[k] / total : 0, vb = cumV ? cum[k + 1] / total : 1;
+    if (!cumV && Math.abs(profile[k].d - profile[k + 1].d) < 1e-6) { va = 1; vb = 0; }
+    for (let j = 0; j <= N; j++) uv.push(j / N, va);
+    for (let j = 0; j <= N; j++) uv.push(j / N, vb);
+    for (let j = 0; j < N; j++) {
+      const a = base + j, b = a + 1, c = base + N + 1 + j, d = c + 1;
+      idx.push(a, c, b, b, c, d);
+    }
+    base += 2 * (N + 1);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  const m = new THREE.Mesh(g, material);
+  m.castShadow = cast; m.receiveShadow = receive;
+  return m;
+}
+
 </script>
 </body>
 </html>
