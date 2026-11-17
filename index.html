@@ -1981,6 +1981,81 @@ for (const btn of document.querySelectorAll('.fold')) btn.addEventListener('clic
   btn.textContent = folded ? btn.dataset.show : btn.dataset.hide; btn.setAttribute('aria-expanded', String(!folded)); btn.setAttribute('aria-label', `${folded ? 'Show' : 'Hide'} ${what}`);
 });
 
+/* ------------------------------------------------------------------ picking: ray -> terrace / glass / parking -> seat, suite or lot */
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), tip = document.getElementById('tip');
+const PICK = [...terraces, glassMesh];                          // parking is NOT selectable (removed on request); its prices stay in the list
+function pick(clientX, clientY) {
+  ndc.set(clientX / innerWidth * 2 - 1, -(clientY / innerHeight) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const hit = ray.intersectObjects(PICK, false)[0];
+  if (!hit) return null;
+  const { x, y: hy, z } = hit.point;
+  if (hit.object === glassMesh) return { type: 'suite', u: nearestSuite(x, z) };
+  const d = dOf(x, z);
+  if (hit.object === parkingMesh) { const lot = lotOf(x, z, d), rw = rowOfD(d); return { type: 'lot', lot, row: rw }; }
+  if (hit.object === terraces[1] && d >= GLASS_D - 0.4 && d <= BACK_D + 0.1 && hy > FASCIA_TOP - 0.5) return { type: 'suite', u: nearestSuite(x, z) };
+  const cx = Math.floor(x / CELL), cz = Math.floor(z / CELL);
+  let best = -1, bd = 1.2;
+  for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+    const arr = grid.get(gkey(cx + i, cz + j)); if (!arr) continue;
+    for (const id of arr) {
+      const dx = seatPos[id * 3] - x, dy = seatPos[id * 3 + 1] + 0.4 - hy, dz = seatPos[id * 3 + 2] - z, dd = dx * dx + dy * dy + dz * dz;
+      if (dd < bd) { bd = dd; best = id; }
+    }
+  }
+  return best >= 0 ? { type: 'seat', id: best } : null;
+}
+const keyOf = id => (seatTier[id] - 1) + ':' + (seatSection[id] - 1);
+function setHover(h) {
+  const isSeat = h && h.type === 'seat', nKey = isSeat ? keyOf(h.id) : null;
+  const nId = isSeat && inSectionView() && nKey === selKey && isAvail(h.id) ? h.id : -1;          // overview or another block: highlight the whole block, never a single seat
+  const nSuite = h && h.type === 'suite' ? h.u : -1, nLot = h && h.type === 'lot' ? h.lot : null;
+  if (nId !== hoverId || nKey !== hoverKey) {
+    const oldKey = hoverKey, oldId = hoverId; hoverId = nId; hoverKey = nKey;
+    if (oldId >= 0) paint(oldId, baseCol(oldId));
+    refresh([oldKey, nKey]);
+  }
+  if (nSuite !== hoverSuite) { hoverSuite = nSuite; placeMarker(hoverMarker, nSuite === selSuite ? -1 : nSuite); }
+  if (nLot !== hoverLot) { hoverLot = nLot; updateLots(); }
+}
+// Ticket-card markup shared by the hover tooltip and the seat card in the panel: label + main line | price (+ optional footer line)
+const ticketCard = (label, main, unit, price, foot) =>
+  `<div class="tk"><div class="tk-l"><small>${label}</small><b>${main}</b></div><div class="tk-r"><small>${unit}</small><em>${price}</em></div></div>` + (foot ? `<div class="tk-foot">${foot}</div>` : '');
+function tooltipFor(h) {
+  if (h.type === 'seat' && !(inSectionView() && keyOf(h.id) === selKey)) {        // not inside the selected block yet: show the BLOCK and its price range
+    const id = h.id, k = keyOf(id), n = availIn(sectionIds.get(k));
+    return ticketCard(`${tiers[seatTier[id] - 1].name} tier`, `Section ${seatSection[id]}`, 'price range', fmtRange(sectionRange(k)), `${n} seats available. Click to pick this section first.`);
+  }
+  if (h.type === 'seat' && !isAvail(h.id)) { const id = h.id; return ticketCard(`${tiers[seatTier[id] - 1].name} tier · Section ${seatSection[id]}`, `Row ${seatRow[id]} · Seat ${seatNumber[id]}`, 'status', 'Not available', 'Pick a plain orange seat.'); }
+  if (h.type === 'seat') { const id = h.id, k = keyOf(id); return ticketCard(`${tiers[seatTier[id] - 1].name} tier · Section ${seatSection[id]}`, `Row ${seatRow[id]} · Seat ${seatNumber[id]}`, 'per seat', `${CUR}${seatPrice[id]}`, `Block range ${fmtRange(sectionRange(k))}`); }
+  if (h.type === 'suite') return ticketCard('VIP · Skybox', `Skybox ${h.u + 1}`, 'per seat', `${CUR}${suitePrice(h.u)}`, `${SUITE_SEATS} seats per suite`);
+  return ticketCard(`Parking · ${LOT_NAME[h.lot]} lot`, `Row ${h.row + 1}`, 'per day', `${CUR}${lotPrice(h.lot, h.row)}`, `Lot range ${fmtRange(lotRange(h.lot))}`);
+}
+let pendingMove = null;
+renderer.domElement.addEventListener('pointermove', e => {
+  const first = !pendingMove; pendingMove = e;
+  if (first) requestAnimationFrame(() => {
+    const ev = pendingMove; pendingMove = null;
+    const h = pick(ev.clientX, ev.clientY); setHover(h);
+    if (!h) { tip.style.display = 'none'; renderer.domElement.style.cursor = 'default'; return; }
+    renderer.domElement.style.cursor = 'pointer';
+    tip.innerHTML = tooltipFor(h); tip.style.display = 'block';
+    tip.style.left = Math.min(ev.clientX + 16, innerWidth - 330) + 'px'; tip.style.top = Math.min(ev.clientY + 16, innerHeight - 90) + 'px';
+  });
+});
+renderer.domElement.addEventListener('pointerleave', () => { setHover(null); tip.style.display = 'none'; });
+let down = null;
+renderer.domElement.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener('pointerup', e => {
+  if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 6) return;
+  const h = pick(e.clientX, e.clientY); if (!h) return;
+  tip.style.display = 'none';
+  if (h.type === 'seat') {
+    const k = keyOf(h.id);
+    if (!inSectionView() || k !== selKey) selectSection(seatTier[h.id] - 1, seatSection[h.id] - 1); else if (isAvail(h.id)) selectSeat(h.id);   // section first, then an AVAILABLE seat inside it (other colours are not for sale)
+  } else if (h.type === 'suite') selectSuite(h.u); else selectLot(h.lot);
+});
+
 </script>
 </body>
 </html>
