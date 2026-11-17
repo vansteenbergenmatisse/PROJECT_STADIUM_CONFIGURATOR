@@ -171,7 +171,7 @@ export function buildParking(ctx, { curves, spurSamples, outsideStadium }) {
       scene.add(g);
     }
     // parked cars: slots = the same bays as the painted lines (radial, 2.6 m apart, rows as above), 50 picked at random
-    const lotAt = (x, z, d) => { const ax = Math.abs(x) / (A0 + d), az = Math.abs(z) / (B0 + d); return az >= ax ? (z > 0 ? 'S' : 'N') : (x > 0 ? 'E' : 'W'); };   // same rule as lotOf (defined later in the file)
+    const lotAt = (x, z, d) => { const ax = Math.abs(x) / (A0 + d), az = Math.abs(z) / (B0 + d); return az >= ax ? (z > 0 ? 'S' : 'N') : (x > 0 ? 'E' : 'W'); };   // same rule as lotOf (src/interaction/picking.js)
     const WROW = [3, 3, 2, 1], slots = [], qs = [0, 0];                    // same bay grid as the painted lines; WROW = how much more likely a row is to hold a car (rows near the stadium fill first)
     BAY_ROWS.forEach((dd, ri) => { for (let i = 0; i < BAY_EDGES.length - 1; i++) {
         const th = (BAY_EDGES[i] + BAY_EDGES[i + 1]) / 2; shapePoint(th, dd, qs); const x = qs[0], z = qs[1];

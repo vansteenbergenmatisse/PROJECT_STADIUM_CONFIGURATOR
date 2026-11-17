@@ -10,3 +10,6 @@ reference-3d-frame-aerial.png
 .vscode/
 .idea/
 *.log
+
+# Agent worktrees
+.claude/

@@ -2,11 +2,11 @@
 /**
  * @fileoverview core/listeners: createListenerGroup: one AbortController-based registration helper for every window / canvas / panel listener.
  *
- * WHY: the old inline script registered ~15 listeners with bare addEventListener and never removed any. Registering them through one group means ONE call (`abort()`) can remove all of
+ * WHY: the old inline script registered 14 listeners with bare addEventListener and never removed any. Registering them through one group means ONE call (`abort()`) can remove all of
  *      them, and the list of what the page listens to is visible in one place (the callers). Behaviour is unchanged: the page never unmounts, so abort() is never called at runtime.
  * BUILDS: nothing in the scene; it only creates an AbortController.
  * DEPENDS ON: nothing.
- * USED BY: src/main.js (creates the group), src/core/loop.js (resize), src/interaction/input.js (keyboard, pointer), src/ui/fold-buttons.js, src/ui/checkout.js wiring in input.js.
+ * USED BY: src/main.js (creates the group), src/core/loop.js (resize), src/interaction/input.js (keyboard, pointer), src/ui/fold-buttons.js; the checkout listeners are registered from src/interaction/input.js.
  * LIFECYCLE: created once at boot; `abort()` would detach every listener registered through `on` (not called by the page).
  * UNITS / CONVENTIONS: `options` is the normal addEventListener options object; `signal` is added to it, so a caller must not pass its own signal.
  * NOT HERE: listeners that are assigned as properties (button.onclick = ...), because those are replaced, not stacked, and are not part of the original addEventListener set.

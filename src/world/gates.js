@@ -27,7 +27,6 @@ export function buildGates(ctx) {
   const { scene, MAX_ANISO } = ctx;
   /* ---- gates: 4 ENTRANCES where the access roads arrive (green) and 4 EXITS halfway between them (red). Each gate = a porch block with a dark opening, a big
      lit sign above it and, for entrances, a green paved apron the road runs over. They sit on the same plan angles as the roads / aisles (constant theta = straight radial line). */
-  const ACCESS_ANGLES = [0.35, 1.9, 3.45, 5.0];
   const mergeList = [];                                                 // perimeter wall arcs: merged per material at the end (core/merge.js); the rotated porches and openings stay separate
   {
     const signTex = (txt, bg) => { const c = document.createElement('canvas'); c.width = 768; c.height = 144; const g = c.getContext('2d');
