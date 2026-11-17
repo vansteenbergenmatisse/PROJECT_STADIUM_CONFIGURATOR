@@ -1668,6 +1668,72 @@ const match = (() => {
   };
 })();
 
+/* ------------------------------------------------------------------ selection state + camera targets */
+const nav = { level: 'overview' };                                  // overview | section | seat | suite | lot
+let buy = null;                                                      // demo checkout state: {item, stage:'form'|'done', name, email, err, order}
+let hoverId = -1, hoverKey = null, selKey = null, selSeat = -1, hoverSuite = -1, selSuite = -1, hoverLot = null, selLot = null;
+COL.seat = new THREE.Color(0xff00c8);                                  // the seat under the mouse (inside the selected block) = vivid magenta; nothing else is magenta. A click does not recolour it.
+COL.redDim = COL.red.clone().multiplyScalar(0.45); COL.blueDim = COL.blue.clone().multiplyScalar(0.45); COL.goldDim = COL.gold.clone().multiplyScalar(0.45); COL.hotGold = new THREE.Color(0xffe6a0);   // every other block while one section is selected
+COL.hotRed = new THREE.Color(0xff9640); COL.hotBlue = new THREE.Color(0xffb866);                          // hovered block: brighter orange, chairs stay readable
+let dimOthers = false, selTi = -1, selSe = -1;                          // dimOthers: a section is selected, so the other blocks are darkened and the selected one keeps its natural colours
+const inSectionView = () => (nav.level === 'section' || nav.level === 'seat') && selKey != null;   // single seats can only be hovered / picked inside the selected block
+const paint = (id, col) => seats.setColorAt(id, col);
+const baseCol = id => {
+  const c = seatCode[id];
+  if (dimOthers && (seatTier[id] - 1 !== selTi || seatSection[id] - 1 !== selSe)) return c === 2 ? COL.goldDim : c === 1 ? COL.blueDim : COL.redDim;
+  return c === 2 ? COL.gold : c === 1 ? COL.blue : COL.red;
+};
+function repaintAll() { for (let i = 0; i < seatCount; i++) paint(i, baseCol(i)); if (hoverKey) repaintKey(hoverKey); seats.instanceColor.needsUpdate = true; }
+function repaintKey(k) { const ids = sectionIds.get(k); if (!ids) return; const hot = k === hoverKey && k !== selKey; for (const i of ids) paint(i, hot ? (seatCode[i] === 2 ? COL.hotGold : seatCode[i] ? COL.hotBlue : COL.hotRed) : baseCol(i)); }
+function refresh(keys) {
+  for (const k of new Set(keys)) if (k) repaintKey(k);
+  if (hoverId >= 0) paint(hoverId, COL.seat);                      // colour change happens on hover only
+  seats.instanceColor.needsUpdate = true;
+}
+function updateLots() { for (const k in lotMesh) lotMesh[k].visible = k === hoverLot || k === selLot; }
+function clearSel() {
+  const k = selKey, wasDim = dimOthers; selKey = null; selSeat = -1; selSuite = -1; selLot = null; dimOthers = false; selTi = selSe = -1; closeBuy();
+  if (wasDim) repaintAll(); else refresh([k]);
+  placeMarker(selMarker, -1); updateLots();
+}
+function sectionView(ti, s) {
+  const ids = sectionIds.get(ti + ':' + s); let mx = 0, my = 0, mz = 0;
+  for (const i of ids) { mx += seatPos[i * 3]; my += seatPos[i * 3 + 1]; mz += seatPos[i * 3 + 2]; }
+  mx /= ids.length; my /= ids.length; mz /= ids.length;
+  const L = Math.hypot(mx, mz) || 1, nx = -mx / L, nz = -mz / L;
+  return { pos: [mx + nx * 58, my + 26, mz + nz * 58], tgt: [mx, my, mz] };
+}
+function goOverview() { clearSel(); nav.level = 'overview'; flyTo(OVERVIEW.pos, OVERVIEW.tgt); renderSelection(); setView('Overview'); }
+function selectSection(ti, s) {
+  clearSel(); selKey = ti + ':' + s; nav.level = 'section'; selTi = ti; selSe = s; dimOthers = true; repaintAll();
+  const v = sectionView(ti, s); flyTo(v.pos, v.tgt); renderSelection();
+}
+function selectSeat(id) {
+  if (!inSectionView() || keyOf(id) !== selKey) { selectSection(seatTier[id] - 1, seatSection[id] - 1); return; }   // a section must be selected before one of its seats
+  const old = selKey, ti = seatTier[id] - 1, s = seatSection[id] - 1;
+  selSuite = -1; selLot = null; placeMarker(selMarker, -1); updateLots();
+  selKey = ti + ':' + s; selSeat = id; nav.level = 'seat'; refresh([old, selKey]);   // no recolour on click
+  const x = seatPos[id * 3], y = seatPos[id * 3 + 1], z = seatPos[id * 3 + 2], L = Math.hypot(x, z) || 1;
+  flyTo([x - x / L * 0.1, y + 1.15, z - z / L * 0.1], [0, 1, 0]); renderSelection();
+}
+function selectSuite(u) {
+  clearSel(); selSuite = u; nav.level = 'suite'; placeMarker(selMarker, u);
+  const s = suites[u]; flyTo([s.x + s.nx * 34, Y1 + 13, s.z + s.nz * 34], [s.x, Y1 + 2.5, s.z]); renderSelection();
+}
+function viewFromSuite() {
+  if (selSuite < 0) return; const s = suites[selSuite];
+  flyTo([s.x - s.nx * 1.4, Y1 + 1.6, s.z - s.nz * 1.4], [0, 8, 0]);
+}
+function selectLot(lot) {
+  clearSel(); selLot = lot; nav.level = 'lot'; updateLots();
+  const [a0, a1] = LOT_ARC[lot], c = shapePoint((a0 + a1) / 2, (PARK_IN + PARK_OUT) / 2, [0, 0]), L = Math.hypot(c[0], c[1]) || 1;
+  flyTo([c[0] - c[0] / L * 95, 85, c[1] - c[1] / L * 95], [c[0], 0, c[1]]); renderSelection();
+}
+function back() {
+  if (buy) { closeBuy(); return; }
+  if (nav.level === 'seat') { const [ti, s] = selKey.split(':').map(Number); selectSection(ti, s); } else goOverview();
+}
+
 </script>
 </body>
 </html>
