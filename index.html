@@ -1943,6 +1943,31 @@ panel.addEventListener('click', e => {
 });
 renderSelection();
 
+/* ---- head turn: while a seat is selected you can look left and right (drag, or the arrow keys) to follow the whole pitch. The camera does not move, only where it looks. */
+const look = { yaw: 0, pitch: 0, base: new THREE.Vector3(0, 0, -1), ready: false, drag: null };
+const YAW_MAX = Math.PI * 0.62, PITCH_MIN = -0.6, PITCH_MAX = 0.4, UP = new THREE.Vector3(0, 1, 0);
+function updateLook() {
+  if (nav.level !== 'seat') { look.ready = false; return; }
+  if (tween) return;
+  if (!look.ready) { look.base.copy(controls.target).sub(camera.position).normalize(); look.yaw = 0; look.pitch = 0; look.ready = true; }
+  const v = look.base.clone().applyAxisAngle(UP, look.yaw), right = new THREE.Vector3().crossVectors(v, UP).normalize();
+  v.applyAxisAngle(right, look.pitch); controls.target.copy(camera.position).addScaledVector(v, 100);
+}
+function turnHead(dyaw, dpitch) { look.yaw = Math.max(-YAW_MAX, Math.min(YAW_MAX, look.yaw + dyaw)); look.pitch = Math.max(PITCH_MIN, Math.min(PITCH_MAX, look.pitch + dpitch)); }
+renderer.domElement.addEventListener('pointerdown', e => { if (nav.level === 'seat') look.drag = [e.clientX, e.clientY]; });
+addEventListener('pointermove', e => { if (look.drag && nav.level === 'seat' && e.buttons) { turnHead(-(e.clientX - look.drag[0]) * 0.006, (e.clientY - look.drag[1]) * 0.004); look.drag = [e.clientX, e.clientY]; } });
+addEventListener('pointerup', () => { look.drag = null; });
+addEventListener('keydown', e => { if (nav.level !== 'seat' || buy || (e.target.matches && e.target.matches('input,textarea,select'))) return; if (e.key === 'ArrowLeft') turnHead(0.09, 0); else if (e.key === 'ArrowRight') turnHead(-0.09, 0); else if (e.key === 'ArrowUp') turnHead(0, 0.05); else if (e.key === 'ArrowDown') turnHead(0, -0.05); });
+const scEl = document.getElementById('scorecard'), scScore = document.getElementById('sc-score'), scClock = document.getElementById('sc-clock'); let lastScore = '', lastClock = '';
+function updateScore() {                                         // the live scoreboard: visible while the simulated match runs; clock = seconds since you sat down
+  if (!match.active) { if (!scEl.hidden) scEl.hidden = true; lastScore = lastClock = ''; return; }
+  const sc = match.score, txt = `${sc[0]} - ${sc[1]}`;
+  if (txt !== lastScore) { lastScore = txt; scScore.textContent = txt; scEl.setAttribute('aria-label', `Simulated match: Barcelona ${sc[0]}, Dortmund ${sc[1]}`); }
+  const sec = Math.floor(match.clock), clk = `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`;
+  if (clk !== lastClock) { lastClock = clk; scClock.textContent = clk; }
+  if (scEl.hidden) scEl.hidden = false;
+}
+
 </script>
 </body>
 </html>
