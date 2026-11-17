@@ -7,6 +7,11 @@ It is currently an **orange "Soccer City" (Johannesburg) style stadium in a gree
 a fenced car park of 4 tinted lots (yellow bay lines = park, yellow hatch = no parking, gate portals) with 50 parked cars, a dense forest, blue sky with sun and clouds, an 11 v 11 demo match (Barcelona v Dortmund) with a live scoreboard, a demo checkout pop-up with matchday extras,
 a Forge Forward branded UI that works on phones (price panel, scoreboard and view buttons can be folded away), a loading screen (`assets/loader.html`) shown while the scene builds. No houses. Parking is not selectable. The AI photo render was removed (book entry 20); `proxy/` is unused.
 
+## Repository and hosting
+- GitHub: https://github.com/vansteenbergenmatisse/PROJECT_STADIUM_CONFIGURATOR (branch `main`). Live demo on GitHub Pages: https://vansteenbergenmatisse.github.io/PROJECT_STADIUM_CONFIGURATOR/ (deploys from `main`, root folder, no build).
+- `proxy/` and `reference-3d-frame-aerial.png` are git-ignored on purpose (API key, cache, 6.9 MB image). Never commit `proxy/.env`.
+- Commit and push only when the user asks. Every push to `main` redeploys the live page, so run the verify steps below first.
+
 ## Book index (auto-imported so it is always in context)
 @docs/book/00-index.md
 

@@ -14,6 +14,8 @@
 
 - Batch 26: the user's recording shows only the overview zoom; the 'trash' spots they meant beyond what I found in my own close-ups are unknown. Distant bay lines still shimmer (aliasing). Batch 25: first-render time on a real GPU (5.5 s in the slow test browser), whether the loading animation stalls during the first render, z-fighting from every angle, fold buttons on a real phone, the user's attached image for the fold request (not visible to me).
 
+- Live site (batch 27): checked only in the test browser; no real phone, no real GPU, no cross-browser check.
+
 ## Decisions that were mine (change them if you disagree)
 - Demo checkout rules: promo code DEMO10 = 10% off, no booking fee, card checks are format-only, up to 4 seats (the next seats in the same row). Card brands are text, no logos.
 - Plaza, parking ring (not selectable, now 4 lots with 50 cars) and shops were kept when the surroundings became a meadow; ask before removing them.

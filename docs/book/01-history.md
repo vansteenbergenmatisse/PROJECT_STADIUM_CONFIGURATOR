@@ -197,3 +197,9 @@ Dates are 2026-11-16 (single working session) unless noted.
 - **Why:** user: "when I say hide, I mean literally hide it" and "around the parking lot ... a lot of places where it's really trash".
 - **Verified:** syntax; console empty; close-up screenshots before and after (aligned bays, cars inside bays, neutral asphalt); hide leaves a 28 x 28 transparent dot, restores on click, `H` toggles all three cards.
 - **NOT verified:** every spot the user saw in their own full recording (I only saw the 7 s overview clip and my own close-ups of the west lot, the east gate and a kerb island); that the lots no longer shimmer at distance (fine lines alias; no mipmap/line-width change was made); the hide dot on a real phone.
+
+## 27. Published on GitHub Pages (2026-11-16)
+- **What:** repository pushed (58 commits on `main`), GitHub Pages enabled from `main` / root, README, book index, CLAUDE.md and the `index.html` header comment updated with the live link and hosting notes.
+- **Why:** user asked for the next steps to go live and said yes to updating all docs.
+- **Verified:** `index.html`, `assets/loader.html` and `docs/book/00-index.md` answer HTTP 200 on the Pages URL; the live page built the scene (50 cars, overview level, loader removed) with an empty console in the test browser.
+- **NOT verified:** the live page on a real phone or GPU; load time over the real network (the test numbers are from a slow software-rendered browser); how long a push takes to appear live (the first deploy took under 2 minutes).

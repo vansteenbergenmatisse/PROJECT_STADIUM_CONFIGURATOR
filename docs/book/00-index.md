@@ -1,6 +1,6 @@
 # Stadium book — index
 
-Living documentation for `index.html`. Update the chapters whenever the code changes (see `../../CLAUDE.md`).
+Living documentation for `index.html`. Live demo: https://vansteenbergenmatisse.github.io/PROJECT_STADIUM_CONFIGURATOR/ (GitHub Pages, from `main`). Update the chapters whenever the code changes (see `../../CLAUDE.md`).
 
 | # | Chapter | What it holds |
 |---|---|---|
