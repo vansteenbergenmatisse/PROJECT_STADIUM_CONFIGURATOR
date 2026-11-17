@@ -1968,6 +1968,19 @@ function updateScore() {                                         // the live sco
   if (scEl.hidden) scEl.hidden = false;
 }
 
+/* ---- fold buttons: put a floating card away and bring it back (price panel, scoreboard, view buttons). State lives in the DOM only (class is-folded + aria-expanded); it survives new selections.
+   Folded = the card is hidden completely, a 28 px "+" dot remains. The H key folds every card, or brings them all back when all are folded. ---- */
+addEventListener('keydown', e => {
+  if ((e.key !== 'h' && e.key !== 'H') || e.metaKey || e.ctrlKey || e.altKey || buy || (e.target.matches && e.target.matches('input,textarea,select'))) return;
+  const btns = [...document.querySelectorAll('.fold')], allFolded = btns.every(b => b.parentElement.classList.contains('is-folded'));
+  for (const b of btns) if (b.parentElement.classList.contains('is-folded') === allFolded) b.click();   // all folded -> open the folded ones; otherwise fold the open ones
+});
+for (const btn of document.querySelectorAll('.fold')) btn.addEventListener('click', e => {
+  e.stopPropagation();
+  const box = btn.parentElement, folded = box.classList.toggle('is-folded'), what = btn.dataset.hide === 'Hide' ? btn.getAttribute('aria-label').replace(/^(Hide|Show) /, '') : '';
+  btn.textContent = folded ? btn.dataset.show : btn.dataset.hide; btn.setAttribute('aria-expanded', String(!folded)); btn.setAttribute('aria-label', `${folded ? 'Show' : 'Hide'} ${what}`);
+});
+
 </script>
 </body>
 </html>
