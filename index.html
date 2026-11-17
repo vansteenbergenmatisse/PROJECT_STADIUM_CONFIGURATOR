@@ -2091,6 +2091,16 @@ renderer.setAnimationLoop(() => {
 });
 document.getElementById('stats').textContent = `${seatCount.toLocaleString()} seats in 3 tiers`;
 
+mark('scene built');
+{                                                                  // remove the loading screen after the first frame has really been drawn (two rAFs), fading out unless reduced motion is on
+  const el = document.getElementById('loading');
+  requestAnimationFrame(() => requestAnimationFrame(() => { mark('first frame'); el.classList.add('done'); setTimeout(() => el.remove(), 260); }));
+}
+if (location.hash === '#descent') setTimeout(descent, 1500);      // autoplay for capture: index.html#descent
+
+// exposed for inspection / tests
+window.__stadium = { scene, sun, renderer, camera, controls, seats, seatInfo, seatCount, seatPrice, tiers, tierRange, nav, suites, go: n => (n === 'descent' ? descent() : goOverview()),
+  tables: { seatTier, seatRow, seatNumber, seatSection, seatPos }, selectSection, selectSeat, selectSuite, selectLot };
 </script>
 </body>
 </html>
