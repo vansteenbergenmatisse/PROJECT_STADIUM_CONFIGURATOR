@@ -1543,6 +1543,22 @@ const lotOf = (x, z, d) => { const ax = Math.abs(x) / (A0 + d), az = Math.abs(z)
 const rowOfD = d => { const o = d - FACADE_D; return o < 35.3 ? 0 : o < 42.7 ? 1 : o < 50 ? 2 : 3; };
 const nearestSuite = (x, z) => { let b = 0, bd = Infinity; suites.forEach((s, u) => { const dd = (s.x - x) ** 2 + (s.z - z) ** 2; if (dd < bd) { bd = dd; b = u; } }); return b; };
 
+/* ------------------------------------------------------------------ highlight markers (suites, parking lots) */
+const markerMat = (o) => new THREE.MeshBasicMaterial({ color: 0xff8a1f, transparent: true, opacity: o, depthWrite: false });
+const mkMarker = o => { const m = new THREE.Mesh(new THREE.BoxGeometry(SUITE_W, BOX_H + 0.2, BOX_DEPTH), markerMat(o)); m.visible = false; m.userData.dynamic = true; m.renderOrder = 3; scene.add(m); return m; };
+const hoverMarker = mkMarker(0.28), selMarker = mkMarker(0.5);
+function placeMarker(m, u) {
+  if (u < 0) { m.visible = false; return; }
+  const s = suites[u]; m.position.set(s.x, Y1 + BOX_H / 2, s.z); m.rotation.set(0, Math.atan2(s.nx, s.nz), 0); m.visible = true;
+}
+const LOT_ARC = { E: [-Math.PI / 4, Math.PI / 4], S: [Math.PI / 4, 3 * Math.PI / 4], W: [3 * Math.PI / 4, 5 * Math.PI / 4], N: [5 * Math.PI / 4, 7 * Math.PI / 4] };
+const lotMesh = {};
+for (const k of Object.keys(LOT_ARC)) {
+  const m = ringStrip([{ d: PARK_IN, y: 0.34 }, { d: PARK_OUT, y: 0.34 }], new THREE.MeshBasicMaterial({ color: 0xff8a1f, transparent: true, opacity: 0.32, depthWrite: false, side: THREE.DoubleSide }),
+    { N: 120, t0: LOT_ARC[k][0], t1: LOT_ARC[k][1], cast: false, receive: false });
+  m.visible = false; m.renderOrder = 3; scene.add(m); lotMesh[k] = m;
+}
+
 </script>
 </body>
 </html>
