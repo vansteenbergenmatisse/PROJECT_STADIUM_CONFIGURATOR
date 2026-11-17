@@ -5,7 +5,10 @@
  * WHY: picking a single seat out of 78,397 instances by raycasting the InstancedMesh would test every instance. Instead the ray hits the cheap terrace meshes (and the glass of the skyboxes),
  *      and the hit POINT is matched to the nearest seat through the spatial grid (3 x 3 cells of CELL metres, nearest seat centre within 1.1 m).
  *      The picker only reports; the section-first rule is applied by the callers (hover.js, input.js).
- * BUILDS: nothing (one Raycaster and one Vector2 are reused for every call).
+ *      SPEED: the terrace and glass rings hold about 140,000 triangles; three's default Mesh.raycast tests every one of them on every pick. The picker therefore builds ONCE a two level box hierarchy over the
+ *      triangle order of each pick mesh (leaf = 16 triangles, group = 32 leaves) and only hands the surviving triangle runs to the ORIGINAL Mesh.raycast (through geometry.drawRange), so the triangle test,
+ *      the hit distance and the hit point are exactly the ones three computes; ties keep the lowest triangle index and the earliest mesh of the pick list, as intersectObjects does.
+ * BUILDS: nothing visible (one Raycaster, one Vector2 and the box hierarchy of the pick meshes are created once and reused for every call).
  * DEPENDS ON: three, config/constants.js, data/seat-layout.js (CELL, gkey).
  * USED BY: src/main.js (creates it), src/interaction/input.js.
  * LIFECYCLE: created once after the world exists; no listeners; reads innerWidth / innerHeight on every call (the canvas fills the window).
@@ -28,6 +31,61 @@ const lotOf = (x, z, d) => { const ax = Math.abs(x) / (A0 + d), az = Math.abs(z)
 /** Row (0 = closest to the gate) of a parking point from its offset distance. */
 const rowOfD = d => { const o = d - FACADE_D; return o < 35.3 ? 0 : o < 42.7 ? 1 : o < 50 ? 2 : 3; };
 
+/* ---- ray acceleration: exact triangle culling by boxes (see SPEED in the header) ---- */
+const LEAF = 16, GROUP = 32, PAD = 0.01;                                   // triangles per leaf, leaves per group, box padding in metres (the box test is only a conservative filter)
+const _inv = new THREE.Matrix4(), _lray = new THREE.Ray(), _box = new THREE.Box3(), _hits = [];
+
+/** Build the leaf and group boxes of an indexed mesh (min/max triples in local space). Returns null when the mesh is not indexed (then the default raycast is used). */
+function buildBoxes(mesh) {
+  const g = mesh.geometry, index = g.index, pos = g.attributes.position; if (!index) return null;
+  const tris = index.count / 3, nLeaf = Math.ceil(tris / LEAF), nGroup = Math.ceil(nLeaf / GROUP);
+  const leaf = new Float32Array(nLeaf * 6), group = new Float32Array(nGroup * 6);
+  for (let l = 0; l < nLeaf; l++) {
+    let x0 = Infinity, y0 = Infinity, z0 = Infinity, x1 = -Infinity, y1 = -Infinity, z1 = -Infinity;
+    const t1 = Math.min(tris, (l + 1) * LEAF);
+    for (let i = l * LEAF * 3; i < t1 * 3; i++) {
+      const v = index.getX(i), x = pos.getX(v), y = pos.getY(v), z = pos.getZ(v);
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; if (z < z0) z0 = z; if (z > z1) z1 = z;
+    }
+    leaf.set([x0 - PAD, y0 - PAD, z0 - PAD, x1 + PAD, y1 + PAD, z1 + PAD], l * 6);
+  }
+  for (let q = 0; q < nGroup; q++) {
+    const b = [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity];
+    for (let l = q * GROUP; l < Math.min(nLeaf, (q + 1) * GROUP); l++) for (let k = 0; k < 3; k++) { b[k] = Math.min(b[k], leaf[l * 6 + k]); b[k + 3] = Math.max(b[k + 3], leaf[l * 6 + k + 3]); }
+    group.set(b, q * 6);
+  }
+  return { leaf, group, nLeaf, tris };
+}
+/** Does the local ray touch box number i of the flat array? */
+function hitBox(arr, i) { _box.min.set(arr[i * 6], arr[i * 6 + 1], arr[i * 6 + 2]); _box.max.set(arr[i * 6 + 3], arr[i * 6 + 4], arr[i * 6 + 5]); return _lray.intersectsBox(_box); }
+/**
+ * Nearest hit of `ray` against one mesh, equal to Mesh.raycast + sort: the box hierarchy only decides which triangle runs are tested.
+ * Returns {distance, point, object} or null. Restores geometry.drawRange.
+ */
+function nearestHit(ray, mesh, acc) {
+  if (!mesh.layers.test(ray.layers)) return null;
+  if (!acc) { _hits.length = 0; mesh.raycast(ray, _hits); _hits.sort((a, b) => a.distance - b.distance); return _hits[0] || null; }
+  _inv.copy(mesh.matrixWorld).invert(); _lray.copy(ray.ray).applyMatrix4(_inv);
+  const dr = mesh.geometry.drawRange, s0 = dr.start, c0 = dr.count;          // the page never sets a draw range on these meshes; restored anyway
+  let best = null, runStart = -1;
+  const flush = end => {                                                      // test the triangles of leaves [runStart, end) with the original raycast
+    dr.start = runStart * LEAF * 3; dr.count = (Math.min(acc.tris, end * LEAF) - runStart * LEAF) * 3;
+    _hits.length = 0; mesh.raycast(ray, _hits);
+    for (const h of _hits) if (!best || h.distance < best.distance) best = h;   // strict <: the first (lowest triangle index) wins a tie, as the stable sort in intersectObjects
+    runStart = -1;
+  };
+  for (let q = 0, nGroup = acc.group.length / 6; q < nGroup; q++) {
+    const l0 = q * GROUP, l1 = Math.min(acc.nLeaf, l0 + GROUP);
+    if (!hitBox(acc.group, q)) { if (runStart >= 0) flush(l0); continue; }
+    for (let l = l0; l < l1; l++) {
+      if (hitBox(acc.leaf, l)) { if (runStart < 0) runStart = l; } else if (runStart >= 0) flush(l);
+    }
+  }
+  if (runStart >= 0) flush(acc.nLeaf);
+  dr.start = s0; dr.count = c0;
+  return best;
+}
+
 /**
  * Create the picker.
  * @param {{camera: any}} ctx - shared context (core/ctx.js).
@@ -37,12 +95,14 @@ const rowOfD = d => { const o = d - FACADE_D; return o < 35.3 ? 0 : o < 42.7 ? 1
 export function createPicker({ camera }, { terraces, glassMesh, parkingMesh, grid, seatPos, suites }) {
   const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
   const PICK = [...terraces, glassMesh];                          // parking is NOT selectable (removed on request); its prices stay in the list
+  const ACC = PICK.map(buildBoxes);                                  // one box hierarchy per pick mesh, built once
   const nearestSuite = (x, z) => { let b = 0, bd = Infinity; suites.forEach((s, u) => { const dd = (s.x - x) ** 2 + (s.z - z) ** 2; if (dd < bd) { bd = dd; b = u; } }); return b; };
   /** What is at this screen position? null when the ray hits nothing pickable. */
   function pick(clientX, clientY) {
     ndc.set(clientX / innerWidth * 2 - 1, -(clientY / innerHeight) * 2 + 1);
     ray.setFromCamera(ndc, camera);
-    const hit = ray.intersectObjects(PICK, false)[0];
+    let hit = null;                                                   // nearest over the pick list; strict < keeps the earlier mesh on a tie (as intersectObjects)
+    for (let k = 0; k < PICK.length; k++) { const h = nearestHit(ray, PICK[k], ACC[k]); if (h && (!hit || h.distance < hit.distance)) hit = h; }
     if (!hit) return null;
     const { x, y: hy, z } = hit.point;
     if (hit.object === glassMesh) return { type: 'suite', u: nearestSuite(x, z) };
