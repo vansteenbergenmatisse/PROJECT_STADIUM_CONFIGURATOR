@@ -1496,6 +1496,26 @@ mark('trees'); await yieldToPaint();
   }
 }
 
+mark('camera rig'); await yieldToPaint();
+/* ------------------------------------------------------------------ camera rig: moved only by flyTo() after a click (no free orbit / pan / zoom); head turn lives in the 'head turn' block */
+const OVERVIEW = { pos: [0, 432, 0.5], tgt: [0, 0, 0] };          // top-down start frame
+const LONG_STAND = { pos: [0, 62, 28], tgt: [0, 14, -70] };       // end of the descent
+let tween = null;
+const ease = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;           // cubic in-out: used by the 10 s descent only
+const easePremium = t => t < 0.5 ? 16 * t * t * t * t * t : 1 - Math.pow(-2 * t + 2, 5) / 2;   // quintic in-out: slow start, long glide, soft landing (selection flights)
+// Selection flights ("premium" feel): duration grows with the distance travelled (2.8 s .. 5.2 s) unless a fixed ms is passed (descent passes 10000).
+function flyTo(pos, tgt, ms, easing = easePremium) {
+  setView(null); look.ready = false;
+  const p1 = new THREE.Vector3(...pos);
+  if (ms == null) ms = Math.min(5200, Math.max(2800, 2600 + camera.position.distanceTo(p1) * 9));
+  tween = { t0: performance.now(), ms, ease: easing, p0: camera.position.clone(), a0: controls.target.clone(), p1, a1: new THREE.Vector3(...tgt) };
+}
+function descent() {                       // one straight line, constant heading (no yaw / orbit); pitch eases from straight down to the stand
+  clearSel(); nav.level = 'overview'; renderSelection();
+  camera.position.set(...OVERVIEW.pos); controls.target.set(...OVERVIEW.tgt);
+  flyTo(LONG_STAND.pos, LONG_STAND.tgt, 10000, ease); setView('Descent');       // keeps the original cubic ease so it still matches the reference video
+}
+
 </script>
 </body>
 </html>
