@@ -1157,6 +1157,86 @@ const radialYaw = (th, d) => { const a = shapePoint(th, d, [0, 0]), b = shapePoi
   bay.receiveShadow = true; scene.add(bay);
 }
 
+/* ---- PARKING MARKINGS + FENCE (batch 25). The ring reads as a real car park now:
+   - YELLOW = where you may park: every bay is framed by yellow side lines (radial, 2.6 m apart) and yellow head lines (arcs at the bay ends); the aisles between the rows stay plain asphalt.
+   - YELLOW HATCH = where you may NOT park: a keep-clear strip along both sides of every access road (diagonal stripes between two solid yellow bars, plus NO PARKING signs on posts), and a
+     solid yellow kerb line along the plaza edge (fire lane). The bays and cars never enter a hatched strip (they keep >= 9 m from the road centre, the strip ends at 8.5 m).
+   - FENCE: a chain-link fence (posts every 6 m, mesh panel, top rail) round the outer edge of the ring with a 18 m opening at each of the 4 access roads, where a gate portal with a sign spans the road.
+   Everything here is static, not pickable and does not cast shadows (it only adds a few draw calls, the fence mesh is alpha-tested). Own rng is not needed: no random numbers are used. */
+{
+  const YEL = 0xf2c230, Y_LINE = Y_MARK + 0.01;
+  const yellow = std(YEL, { roughness: 0.7, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
+  const FENCE_D = PARK_OUT + 1.6, GATE_HALF = 9, LINE_CUT = 9.6;                    // fence plan offset, half opening of a gate, half width of the gap the arc lines leave at a road
+  // arcs between the 4 access roads: [t0, t1] in theta, leaving +-m metres (measured along the offset curve d) free at each road
+  const thetaMoved = (tab, th, dm) => { const s = ((sAtTheta(tab, th % TAU) + dm) % tab.L + tab.L) % tab.L; return thetaAtS(tab, s); };
+  const arcsBetweenRoads = (d, m) => { const tab = arcTable(d); return ACCESS_ANGLES.map((a, i) => { const t0 = thetaMoved(tab, a, m); let t1 = thetaMoved(tab, ACCESS_ANGLES[(i + 1) % 4], -m); while (t1 <= t0) t1 += TAU; return [t0, t1]; }); };
+  // 1) yellow head lines of the bays and the solid kerb line on the plaza edge (thin ring strips cut at the roads)
+  const LINES = [[PARK_IN + 0.2, 0.34], [FACADE_D + 27.6, 0.16], [FACADE_D + 32.9, 0.16], [FACADE_D + 37.8, 0.16], [FACADE_D + 47.6, 0.16], [FACADE_D + 52.5, 0.16], [FACADE_D + 57.9, 0.16]];
+  for (const [d0, w] of LINES) for (const [t0, t1] of arcsBetweenRoads(d0, LINE_CUT)) scene.add(ringStrip([{ d: d0, y: Y_LINE }, { d: d0 + w, y: Y_LINE }], yellow, { cast: false, N: 120, t0, t1 }));
+  // 2) keep-clear hatch strips along the roads (only the part inside the ring)
+  const hatchTex = canvasTex(128, 128, (g, w, h) => {
+    g.fillStyle = '#f2c230'; g.fillRect(0, 0, w, 12); g.fillRect(0, h - 12, w, 12);
+    g.save(); g.beginPath(); g.rect(0, 12, w, h - 24); g.clip(); g.strokeStyle = '#f2c230'; g.lineWidth = 15;
+    for (let k = -h; k < w + h; k += 42) { g.beginPath(); g.moveTo(k, h); g.lineTo(k + h, 0); g.stroke(); }
+    g.restore();
+  });
+  const hatch = std(0xffffff, { map: hatchTex, roughness: 0.7, side: THREE.DoubleSide, alphaTest: 0.5, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
+  const inRing = p => !outsideStadium(p.x, p.z, 0) && outsideStadium(p.x, p.z, -(PARK_OUT - PARK_IN));
+  function offsetStrip(pts, o0, o1, mat) {                                          // strip between two lateral offsets of a polyline; u = metres / 3 along the road, v across
+    const pos = [], uv = [], idx = []; let acc = 0;
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)]; let tx = b.x - a.x, tz = b.z - a.z; const l = Math.hypot(tx, tz) || 1; tx /= l; tz /= l;
+      if (i) acc += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].z - pts[i - 1].z);
+      pos.push(pts[i].x - tz * o0, Y_LINE, pts[i].z + tx * o0, pts[i].x - tz * o1, Y_LINE, pts[i].z + tx * o1); uv.push(acc / 3, 0, acc / 3, 1);
+      if (i) { const k = (i - 1) * 2; idx.push(k, k + 2, k + 1, k + 1, k + 2, k + 3); }
+    }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
+    const m = new THREE.Mesh(g, mat); m.receiveShadow = true; return m;
+  }
+  const noParkTex = (() => { const c = document.createElement('canvas'); c.width = 256; c.height = 192; const g = c.getContext('2d'); g.fillStyle = '#f2c230'; g.fillRect(0, 0, 256, 192); g.strokeStyle = '#15171c'; g.lineWidth = 8; g.strokeRect(8, 8, 240, 176);
+    g.fillStyle = '#15171c'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '800 62px "Plus Jakarta Sans", system-ui, sans-serif'; g.fillText('NO', 128, 62); g.font = '800 46px "Plus Jakarta Sans", system-ui, sans-serif'; g.fillText('PARKING', 128, 124);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = MAX_ANISO; return t; })();
+  const noParkMat = new THREE.MeshBasicMaterial({ map: noParkTex, side: THREE.DoubleSide }), poleMat = std(0x3a3f4a, { roughness: 0.5, metalness: 0.4 });
+  const poleGeo = new THREE.CylinderGeometry(0.06, 0.07, 2.5, 6).translate(0, 1.25, 0), plateGeo = new THREE.PlaneGeometry(1.5, 1.125);
+  for (const c of curves.slice(1)) {
+    const pts = c.getSpacedPoints(400).filter(inRing);
+    for (const side of [1, -1]) {
+      scene.add(offsetStrip(pts, side * 6.6, side * 8.5, hatch));
+      for (const f of [0.12, 0.88]) {                                                // two NO PARKING signs per side, facing along the road
+        const i = Math.floor(f * (pts.length - 1)), a = pts[i], b = pts[Math.min(pts.length - 1, i + 1)]; let tx = b.x - a.x, tz = b.z - a.z; const l = Math.hypot(tx, tz) || 1; tx /= l; tz /= l;
+        const gx = a.x - tz * side * 9.2, gz = a.z + tx * side * 9.2, grp = new THREE.Group(); grp.position.set(gx, Y_LOT, gz); grp.rotation.y = Math.atan2(tx, tz);
+        const pole = new THREE.Mesh(poleGeo, poleMat); pole.castShadow = true; grp.add(pole); const plate = new THREE.Mesh(plateGeo, noParkMat); plate.position.set(0, 2.15, 0); grp.add(plate); scene.add(grp);
+      }
+    }
+  }
+  // 3) chain-link fence: 4 arcs between the gates. Panel = alpha-tested diamond mesh (ringStrip, vertical), top rail = thin strip, posts = one InstancedMesh.
+  const meshTex = canvasTex(64, 64, (g, w, h) => { g.clearRect(0, 0, w, h); g.strokeStyle = 'rgba(200,205,212,1)'; g.lineWidth = 3; for (let k = -h; k < w + h; k += 32) { g.beginPath(); g.moveTo(k, 0); g.lineTo(k + h, h); g.stroke(); g.beginPath(); g.moveTo(k + h, 0); g.lineTo(k, h); g.stroke(); } }, { srgb: true });
+  const FH = 2.4, tabF = arcTable(FENCE_D), postPts = [], railM = std(0x9aa0a8, { roughness: 0.4, metalness: 0.6 });
+  for (const [t0, t1] of arcsBetweenRoads(FENCE_D, GATE_HALF)) {
+    const s0 = sAtTheta(tabF, t0 % TAU); let s1 = sAtTheta(tabF, t1 % TAU); if (s1 <= s0) s1 += tabF.L;
+    const len = s1 - s0, tex = meshTex.clone(); tex.needsUpdate = true; tex.repeat.set(len / 1.1, FH / 1.1);
+    scene.add(ringStrip([{ d: FENCE_D, y: Y_LOT }, { d: FENCE_D, y: Y_LOT + FH }], new THREE.MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.4, side: THREE.DoubleSide }), { cast: false, receive: false, N: 140, t0, t1 }));
+    scene.add(ringStrip([{ d: FENCE_D - 0.04, y: Y_LOT + FH }, { d: FENCE_D + 0.04, y: Y_LOT + FH + 0.06 }], railM, { cast: false, receive: false, N: 140, t0, t1 }));
+    const n = Math.max(1, Math.round(len / 6));
+    for (let i = 0; i <= n; i++) { const a = arcAt(tabF, ((s0 + len * i / n) % tabF.L) / tabF.L); postPts.push([a.x, a.z]); }
+  }
+  const posts = new THREE.InstancedMesh(new THREE.BoxGeometry(0.14, FH + 0.15, 0.14).translate(0, (FH + 0.15) / 2, 0), railM, postPts.length), pd = new THREE.Object3D();
+  postPts.forEach(([x, z], i) => { pd.position.set(x, Y_LOT, z); pd.updateMatrix(); posts.setMatrixAt(i, pd.matrix); }); scene.add(posts);
+  // 4) gate portals: two pillars and a sign beam across each access road, "PARKING" on both faces
+  const gateTex = (() => { const c = document.createElement('canvas'); c.width = 768; c.height = 128; const g = c.getContext('2d'); g.fillStyle = '#1b2030'; g.fillRect(0, 0, 768, 128); g.fillStyle = '#f2c230'; g.fillRect(0, 0, 768, 10); g.fillRect(0, 118, 768, 10);
+    g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '800 62px "Plus Jakarta Sans", system-ui, sans-serif'; g.fillText('PARKING  ·  ENTRANCE', 384, 68);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = MAX_ANISO; return t; })();
+  const pillarM = std(0x2a2e39, { roughness: 0.6, metalness: 0.2 }), p0 = [0, 0], p1 = [0, 0];
+  for (const a of ACCESS_ANGLES) {
+    shapePoint(a, FENCE_D, p0); shapePoint(a, FENCE_D + 1, p1); let rx = p1[0] - p0[0], rz = p1[1] - p0[1]; const rl = Math.hypot(rx, rz); rx /= rl; rz /= rl;    // radial direction; across = (-rz, rx)
+    const grp = new THREE.Group(); grp.position.set(p0[0], Y_LOT, p0[1]); grp.rotation.y = Math.atan2(rx, rz);
+    for (const sx of [-GATE_HALF, GATE_HALF]) { const pl = new THREE.Mesh(new THREE.BoxGeometry(0.7, 5.6, 0.7), pillarM); pl.position.set(sx, 2.8, 0); pl.castShadow = true; grp.add(pl); }
+    const beam = new THREE.Mesh(new THREE.BoxGeometry(GATE_HALF * 2 + 0.7, 1.3, 0.5), pillarM); beam.position.set(0, 6.1, 0); beam.castShadow = true; grp.add(beam);
+    for (const side of [1, -1]) { const pl = new THREE.Mesh(new THREE.PlaneGeometry(GATE_HALF * 2 - 0.6, 1.05), new THREE.MeshBasicMaterial({ map: gateTex })); pl.position.set(0, 6.1, side * 0.27); pl.rotation.y = side > 0 ? 0 : Math.PI; grp.add(pl); }
+    scene.add(grp);
+  }
+}
+
 </script>
 </body>
 </html>
