@@ -35,7 +35,7 @@ Everything is a demo. The checkout charges nothing, stores nothing and sends not
 ## What it is made of
 
 - [three.js](https://threejs.org) r160, loaded from the jsDelivr CDN through an import map
-- Plain HTML, CSS and JavaScript modules in one file, `index.html`
+- Plain HTML, CSS and JavaScript (ES modules): `index.html`, `css/` and `src/`
 - Plus Jakarta Sans from Google Fonts (falls back to your system font)
 - No build step, no package manager, no dependencies to install
 
@@ -68,13 +68,17 @@ Serve the folder over HTTP. Opening `index.html` straight from disk has not been
 ## Project layout
 
 ```
-index.html          the whole app: markup, styles and the three.js script
+index.html          markup, the import map and the stylesheet links
+css/                stylesheets (tokens, base, hud, panel, scoreboard, checkout, overlays, responsive)
+src/main.js         thin boot file: builds the scene in a fixed order, wires the interaction and starts the loop
+src/                core, config, data, world, state, sim, interaction, ui, debug (one responsibility per file)
+tools/parity/       the scene fingerprint used to prove a change did not alter the picture
 assets/loader.html  the loading screen, shown in an iframe while the scene builds
 docs/book/          the project book: history, architecture, pricing, camera, rendering, open issues
 CLAUDE.md           working rules for this repository
 ```
 
-`index.html` starts with a map of its own sections. Every section marker explains what it builds and why. For the long version, start at [`docs/book/00-index.md`](docs/book/00-index.md).
+`index.html` starts with a map of the files and every module starts with a header saying what it builds and why. For the long version, start at [`docs/book/00-index.md`](docs/book/00-index.md).
 
 ## Known limits
 

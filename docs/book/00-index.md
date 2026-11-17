@@ -1,11 +1,11 @@
 # Stadium book — index
 
-Living documentation for `index.html`. Live demo: https://vansteenbergenmatisse.github.io/PROJECT_STADIUM_CONFIGURATOR/ (GitHub Pages, from `main`). Update the chapters whenever the code changes (see `../../CLAUDE.md`).
+Living documentation for the page (`index.html`, `css/`, `src/`). Live demo: https://vansteenbergenmatisse.github.io/PROJECT_STADIUM_CONFIGURATOR/ (GitHub Pages, from `main`). Update the chapters whenever the code changes (see `../../CLAUDE.md`).
 
 | # | Chapter | What it holds |
 |---|---|---|
 | 01 | [History](01-history.md) | Chronological log of every change: what, why, verified / not verified |
-| 02 | [Architecture](02-architecture.md) | Section-by-section map of `index.html`, constants, data flow |
+| 02 | [Architecture](02-architecture.md) | Map of the files in `index.html`, `css/` and `src/`, constants, data flow |
 | 03 | [Pricing](03-pricing.md) | The ticket price model, formulas, resulting ranges |
 | 04 | [Camera and interaction](04-camera-and-interaction.md) | Locked camera, click states, picking, descent |
 | 05 | [Rendering, lighting, shadows](05-rendering-lighting-shadows.md) | Current settings, research findings, what was adopted / rejected |
