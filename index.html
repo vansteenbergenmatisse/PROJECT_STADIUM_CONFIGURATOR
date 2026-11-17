@@ -507,6 +507,76 @@ camera.position.set(-230, 170, 250);
 // Fixed camera rig: no orbit / pan / zoom. It only moves through flyTo() when the user clicks something in the stadium.
 const controls = { target: new THREE.Vector3(), update() { camera.lookAt(this.target); } };
 
+/* ---- visible sky: Sky shader dome + drifting procedural clouds + sun glow. All three are re-centred on the camera every frame (userData.dynamic), radius < camera far (3200). */
+const skyGroup = new THREE.Group(); skyGroup.userData.dynamic = true;
+// visible sky: clear blue gradient (deep blue overhead, pale blue at the horizon) with a sun disc and glow. Own shader because the stock Sky shader washes out under ACES.
+const skyDome = new THREE.Mesh(new THREE.SphereGeometry(2950, 48, 24), new THREE.ShaderMaterial({
+  side: THREE.BackSide, depthWrite: false, fog: false, uniforms: { uSun: { value: SUN_POS.clone().normalize() } },
+  vertexShader: 'varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: `varying vec3 vDir; uniform vec3 uSun;
+    void main(){
+      vec3 d = normalize(vDir); float h = clamp(d.y, 0.0, 1.0);
+      vec3 col = mix(vec3(0.50, 0.70, 0.92), vec3(0.035, 0.22, 0.78), pow(h, 0.5));
+      float s = max(dot(d, normalize(uSun)), 0.0);
+      col += vec3(1.0, 0.82, 0.55) * (pow(s, 6.0) * 0.07 + pow(s, 64.0) * 0.22);                 // warm glow round the sun
+      col = mix(col, vec3(6.0, 5.6, 4.8), smoothstep(0.99975, 0.99992, s));                      // the sun disc
+      gl_FragColor = vec4(col, 1.0);
+      #include <tonemapping_fragment>
+      #include <colorspace_fragment>
+    }`,
+}));
+skyDome.renderOrder = -3; skyDome.frustumCulled = false; skyDome.userData.dynamic = true;
+const cloudMat = new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false, side: THREE.BackSide, fog: false,
+  uniforms: { uTime: { value: 0 }, uSun: { value: SUN_POS.clone().normalize() } },
+  vertexShader: 'varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: `varying vec3 vDir; uniform float uTime; uniform vec3 uSun;
+    float hash(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+    float noise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+      return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y); }
+    float fbm(vec2 p){ float v = 0.0, a = 0.5; for (int i = 0; i < 5; i++) { v += a * noise(p); p = p * 2.03 + vec2(17.1, 9.7); a *= 0.5; } return v; }
+    void main(){
+      vec3 d = normalize(vDir); float h = d.y; if (h < 0.015) discard;
+      vec2 uv = d.xz / (h + 0.18) * 1.1 + vec2(uTime * 0.012, uTime * 0.004);
+      float n = fbm(uv), c = smoothstep(0.42, 0.62, n), fade = smoothstep(0.015, 0.2, h);
+      float lit = clamp(dot(d, normalize(uSun)) * 0.5 + 0.5, 0.0, 1.0);
+      vec3 col = mix(vec3(0.82, 0.88, 0.98), vec3(1.6, 1.58, 1.5), smoothstep(0.48, 0.82, n));
+      col = mix(col, vec3(1.8, 1.65, 1.35), pow(lit, 3.0) * 0.5);
+      gl_FragColor = vec4(col, c * fade * 0.95);
+      #include <tonemapping_fragment>
+      #include <colorspace_fragment>
+    }`,
+});
+const cloudDome = new THREE.Mesh(new THREE.SphereGeometry(2900, 48, 24, 0, Math.PI * 2, 0, Math.PI / 2), cloudMat);
+cloudDome.renderOrder = -2; cloudDome.frustumCulled = false; cloudDome.userData.dynamic = true;
+const sunGlow = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d'), gr = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+  gr.addColorStop(0, 'rgba(255,255,240,1)'); gr.addColorStop(0.12, 'rgba(255,244,214,0.75)'); gr.addColorStop(0.4, 'rgba(255,224,170,0.22)'); gr.addColorStop(1, 'rgba(255,224,170,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, fog: false }));
+  sp.material.opacity = 0.5; sp.scale.setScalar(380); sp.userData.dynamic = true; sp.renderOrder = -1; return sp;
+})();
+skyGroup.add(skyDome, cloudDome, sunGlow); scene.add(skyGroup);
+const SUN_DIR = SUN_POS.clone().normalize();
+function updateSky(tSec) { skyGroup.position.copy(camera.position); sunGlow.position.copy(SUN_DIR).multiplyScalar(2700); cloudMat.uniforms.uTime.value = tSec; }
+
+scene.add(new THREE.HemisphereLight(0xa9c6e6, 0x7a6644, 0.62));        // sky / ground bounce: lifts the dark stand shadows (was 0.45)
+const sun = new THREE.DirectionalLight(0xffd29c, 3.2);         // warm low sun, ~25° elevation
+{ // sun at a fixed distance along SUN_POS, target at the bowl centre, shadow box fitted to the scene's depth range
+  const dir = SUN_POS.clone().normalize();
+  sun.position.copy(dir).multiplyScalar(600); sun.target.position.set(0, 0, 0);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(4096, 4096);
+  Object.assign(sun.shadow.camera, { left: -340, right: 340, top: 340, bottom: -340, near: 280, far: 920 });   // 640 m depth (was 1090)
+  sun.shadow.camera.updateProjectionMatrix();
+  sun.shadow.bias = -0.0002; sun.shadow.normalBias = 0.15;      // scaled to ~0.16 m texels; was 0.4 (lifted shadows off the risers)
+  scene.add(sun, sun.target);
+}
+/* NOTE (batch 19): a 'shadow focus' that re-fitted the shadow frustum to +-170 m inside the bowl (2x sharper texels) was tried and REMOVED: re-baking the frozen map stalled the first
+   frame of a flight (741 ms in the test browser). The map stays one +-340 m bake at load. */
+// cool sky-coloured fill from the side opposite the sun (no shadow): gives shaded faces a hint of blue instead of flat grey, nearly free
+{ const fill = new THREE.DirectionalLight(0x8fb4ff, 0.4); fill.position.set(SUN_POS.x * -1, 90, SUN_POS.z * -1); scene.add(fill); }
+
 </script>
 </body>
 </html>
