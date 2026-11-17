@@ -1122,6 +1122,41 @@ const outsideStadium = (x, z, margin) => Math.pow(Math.abs(x) / (A0 + PARK_OUT +
   m.receiveShadow = true; scene.add(m);
 }
 
+/* ---- parking ring around the arena: paved surface + painted bays (the tinted lots, islands, signs and the 50 cars are added by the PARKING LOTS block right after the bay lines) ---- */
+const ra = rng(777);                                                  // own rng: the shared one drives the trees, so using it here would move them
+const asphaltTex = canvasTex(512, 512, (g, w, h) => {                  // car-park asphalt: neutral mid-grey, fine grain and a few very faint wear patches (no cracks, no big dark blobs: they read as dirt from above)
+  g.fillStyle = '#74777e'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 26; i++) { g.fillStyle = `rgba(40,42,48,${0.025 + ra() * 0.03})`; g.beginPath(); g.arc(ra() * w, ra() * h, 24 + ra() * 60, 0, TAU); g.fill(); }
+  for (let i = 0; i < 14000; i++) { const v = 100 + ra() * 80; g.fillStyle = `rgba(${v},${v},${v + 4},.22)`; g.fillRect(ra() * w, ra() * h, 1 + ra() * 1.4, 1 + ra() * 1.4); }
+});
+const parkTex = asphaltTex; parkTex.repeat.set(70, 2);
+const parkMat = dbl(0xffffff, { map: parkTex, roughness: 0.93, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+const parkingMesh = ringStrip([{ d: PARK_IN, y: Y_LOT }, { d: PARK_OUT, y: Y_LOT }], parkMat, { cast: false, cumV: true });
+scene.add(parkingMesh);
+
+function paintGeo(g, r, gr, b) {
+  const n = g.attributes.position.count, a = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { a[i * 3] = r; a[i * 3 + 1] = gr; a[i * 3 + 2] = b; }
+  g.setAttribute('color', new THREE.BufferAttribute(a, 3)); g.deleteAttribute('uv'); return g;
+}
+/* Bay grid (batch 25 fix): the 4 rows used to compute their own bay count from their own length, so the lines of the back-to-back rows drifted against each other and the cars did not sit between lines.
+   Now ONE list of bay edges (BAY_EDGES, in theta, evenly spaced by arc length on the middle of the lot) is shared by every row: side lines are straight radial lines through all rows, and cars use the same grid. */
+const BAY_ROWS = [30.2, 40.4, 45.0, 55.2].map(o => FACADE_D + o), BAY_W = 2.6, BAY_LEN = 5.0;
+const BAY_EDGES = (() => { const tab = arcTable(FACADE_D + 42.7), n = Math.floor(tab.L / BAY_W), e = []; for (let i = 0; i < n; i++) e.push(thetaAtS(tab, tab.L * i / n)); e.push(TAU); return e; })();
+const radialYaw = (th, d) => { const a = shapePoint(th, d, [0, 0]), b = shapePoint(th, d + 1, [0, 0]); return Math.atan2(b[0] - a[0], b[1] - a[1]); };
+{
+  const lines = [], q = [0, 0];
+  for (const dr of BAY_ROWS) for (let i = 0; i < BAY_EDGES.length - 1; i++) {
+    shapePoint(BAY_EDGES[i], dr, q);
+    if (spurSamples.some(p => Math.hypot(p.x - q[0], p.z - q[1]) < 9)) continue;        // access roads cut through the lot
+    lines.push([q[0], q[1], radialYaw(BAY_EDGES[i], dr)]);
+  }
+  const dummy = new THREE.Object3D();
+  const bay = new THREE.InstancedMesh(new THREE.BoxGeometry(0.14, 0.02, BAY_LEN + 0.2), std(0xf2c230, { roughness: 0.7, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }), lines.length);   // yellow = you may park between these lines
+  lines.forEach(([x, z, yaw], i) => { dummy.position.set(x, Y_MARK, z); dummy.rotation.set(0, yaw, 0); dummy.updateMatrix(); bay.setMatrixAt(i, dummy.matrix); });
+  bay.receiveShadow = true; scene.add(bay);
+}
+
 </script>
 </body>
 </html>
