@@ -1109,6 +1109,19 @@ const spurSamples = []; for (const c of curves.slice(1)) for (const pt of c.getS
 const roadDist = (x, z) => { let m = Infinity; for (const r of roadSamples) { const dx = r.x - x, dz = r.z - z, d2 = dx * dx + dz * dz; if (d2 < m) m = d2; } return Math.sqrt(m); };
 const outsideStadium = (x, z, margin) => Math.pow(Math.abs(x) / (A0 + PARK_OUT + margin), EXP) + Math.pow(Math.abs(z) / (B0 + PARK_OUT + margin), EXP) > 1;
 
+/* ---- road markings: dashed centre lines (one InstancedMesh) ---- */
+{
+  const DASH_GAP = 14, dashes = [];
+  for (const c of curves) {
+    const L = c.getLength(), n = Math.floor(L / DASH_GAP);
+    for (let i = 0; i < n; i++) { const u = (i + 0.5) / n; dashes.push([c.getPointAt(u), c.getTangentAt(u)]); }
+  }
+  const m = new THREE.InstancedMesh(new THREE.BoxGeometry(0.35, 0.03, 5), std(0xf3efe3, { roughness: 0.8 }), dashes.length);
+  const dummy = new THREE.Object3D();
+  dashes.forEach(([p, t], i) => { dummy.position.set(p.x, Y_DASH, p.z); dummy.rotation.set(0, Math.atan2(t.x, t.z), 0); dummy.updateMatrix(); m.setMatrixAt(i, dummy.matrix); });
+  m.receiveShadow = true; scene.add(m);
+}
+
 </script>
 </body>
 </html>
