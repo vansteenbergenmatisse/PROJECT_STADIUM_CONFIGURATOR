@@ -1806,6 +1806,31 @@ function renderSelection() {
   if (nav.level !== 'overview') h += '<button class="btn" data-act="back">Back</button>';
   selEl.innerHTML = h;
 }
+/* ---- demo checkout POP-UP: cart -> payment method -> ticket details. NOTHING is charged, stored or sent: the form values live only in this object until the ticket is shown,
+   then are dropped. Card brands are plain text (no logos). The only promo code is the demo code DEMO10 (10% off). Extra seats are the next seats in the same row. */
+const modalEl = document.getElementById('modal');
+const esc = v => String(v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const money = v => `${CUR}${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const ICON = { close: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>', back: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>',
+  lock: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+  ball: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m12 8 3.5 2.5-1.3 4h-4.4l-1.3-4Z"/></svg>' };
+function gateFor(id) {                                          // entrance letter of the gate nearest to this seat (plan angle -> nearest ACCESS_ANGLES entry)
+  const ti = seatTier[id] - 1, t = tiers[ti], d = t.d0 + (seatRow[id] - 1) * RUN + RUN / 2, x = seatPos[id * 3], z = seatPos[id * 3 + 2];
+  const th = (Math.atan2(sgnPow(z / (B0 + d), EXP / 2), sgnPow(x / (A0 + d), EXP / 2)) + TAU) % TAU;
+  let best = 0, bd = 9; ACCESS_ANGLES.forEach((a, i) => { const dd = Math.abs(th - a), m = Math.min(dd, TAU - dd); if (m < bd) { bd = m; best = i; } });
+  return String.fromCharCode(65 + best);
+}
+function buyItem() {
+  if (nav.level === 'seat' && selSeat >= 0) {
+    const id = selSeat, ids = [id], row = seatRow[id], num = seatNumber[id], pool = sectionIds.get(selKey);
+    for (let k = 1; k < 4; k++) { const nx = pool.find(i => seatRow[i] === row && seatNumber[i] === num + k); if (nx === undefined || !isAvail(nx)) break; ids.push(nx); }   // up to 3 more seats directly next to it
+    return { kind: 'seat', ids, qty: 1, title: `${tiers[seatTier[id] - 1].name} tier · Section ${seatSection[id]}`, sub: `Row ${row}`, tier: tiers[seatTier[id] - 1].name };
+  }
+  if (nav.level === 'suite' && selSuite >= 0) { const u = selSuite; return { kind: 'suite', u, qty: 1, title: `Skybox ${u + 1}`, sub: `${SUITE_SEATS} seats`, tier: 'VIP' }; }
+  return null;
+}
+const buyTotal = b => b.kind === 'suite' ? suitePrice(b.u) * SUITE_SEATS : b.ids.slice(0, b.qty).reduce((a, i) => a + seatPrice[i], 0);
+const buyDiscount = b => b.promo ? buyTotal(b) * 0.10 : 0;               // the promo code only applies to the tickets, never to extras
 </script>
 </body>
 </html>
