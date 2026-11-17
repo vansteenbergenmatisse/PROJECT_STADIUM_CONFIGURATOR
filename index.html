@@ -1734,6 +1734,16 @@ function back() {
   if (nav.level === 'seat') { const [ti, s] = selKey.split(':').map(Number); selectSection(ti, s); } else goOverview();
 }
 
+/* ------------------------------------------------------------------ UI: HUD tabs + price panel + demo checkout */
+const viewBar = document.getElementById('views');
+const tabGroup = document.createElement('div'); tabGroup.className = 'tabs'; tabGroup.setAttribute('role', 'tablist'); viewBar.appendChild(tabGroup);
+const mkBtn = (label, fn) => { const b = document.createElement('button'); b.className = 'tab'; b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', 'false'); b.textContent = label; b.onclick = fn; tabGroup.appendChild(b); return b; };
+// the active tab is the camera view the user last asked for; any other flight (a click on a section, seat, skybox, lot) clears it
+function setView(name) { for (const t of tabGroup.children) t.setAttribute('aria-selected', String(t.textContent === name)); }
+const AERIAL = { pos: [0, 340, 300], tgt: [0, 6, 0] };            // oblique drone angle like the Soccer City photo
+mkBtn('Overview', goOverview); mkBtn('Aerial', () => { clearSel(); nav.level = 'overview'; renderSelection(); flyTo(AERIAL.pos, AERIAL.tgt); setView('Aerial'); }); mkBtn('Descent', descent);
+setView('Overview');
+const roofBtn = document.createElement('button'); roofBtn.className = 'btn'; roofBtn.textContent = 'Roof'; roofBtn.onclick = () => toggleRoof(); roofBtn.setAttribute('aria-pressed', 'true'); viewBar.appendChild(roofBtn);
 </script>
 </body>
 </html>
