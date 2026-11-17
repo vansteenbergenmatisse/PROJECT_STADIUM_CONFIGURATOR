@@ -1237,6 +1237,63 @@ const radialYaw = (th, d) => { const a = shapePoint(th, d, [0, 0]), b = shapePoi
   }
 }
 
+/* ---- PARKING LOTS (batch 24): the ring is split into the 4 lots that already carry prices (E, S, W, N = plan-angle quarters, boundaries on theta = pi/4 + k pi/2, see lotOf):
+   each lot has its own pavement tint, green kerb islands with bushes mark the 4 boundaries, a signpost names each lot, and 50 cars are parked in the bays (13 / 13 / 12 / 12), more in the
+   rows closest to the stadium. Cars are back in because the user asked for them (they had been removed earlier). Own rng so nothing else moves. Parking stays NOT selectable. */
+{
+  const rr = rng(4242), Q = Math.PI / 4;
+  const LOTS = { E: [-Q, Q, 0xd2d8e4], S: [Q, 3 * Q, 0xd4dfd0], W: [3 * Q, 5 * Q, 0xe2d6c9], N: [5 * Q, 7 * Q, 0xdad2e3] };   // faint tints on the asphalt: still tells the lots apart
+  const lotTex = parkTex.clone(); lotTex.needsUpdate = true; lotTex.repeat.set(18, 2);
+  for (const k in LOTS) { const [t0, t1, col] = LOTS[k]; scene.add(ringStrip([{ d: PARK_IN, y: Y_LOT + 0.005 }, { d: PARK_OUT, y: Y_LOT + 0.005 }], dbl(col, { map: lotTex, roughness: 0.93, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), { cast: false, cumV: true, t0, t1, N: 240 })); }
+  // kerb islands on the 4 boundaries (radial lines are straight) + bushes
+  const grassM = std(0x4d7a38, { roughness: 1 }), kerbM = std(0xbdb8ae, { roughness: 0.9 }), q0 = [0, 0], q1 = [0, 0], bushes = [];
+  for (let k = 0; k < 4; k++) {
+    const th = Q + k * Math.PI / 2; shapePoint(th, PARK_IN - 1, q0); shapePoint(th, PARK_OUT + 1, q1);
+    const nx = q1[0] - q0[0], nz = q1[1] - q0[1], len = Math.hypot(nx, nz), ux = nx / len, uz = nz / len, yaw = Math.atan2(ux, uz), cx = (q0[0] + q1[0]) / 2, cz = (q0[1] + q1[1]) / 2;
+    const kerb = new THREE.Mesh(new THREE.BoxGeometry(5.6, 0.18, len), kerbM); kerb.position.set(cx, Y_LOT + 0.09, cz); kerb.rotation.y = yaw; kerb.receiveShadow = true; scene.add(kerb);
+    const gr = new THREE.Mesh(new THREE.BoxGeometry(5.0, 0.2, len - 0.4), grassM); gr.position.set(cx, Y_LOT + 0.12, cz); gr.rotation.y = yaw; gr.receiveShadow = true; scene.add(gr);
+    for (let b = 0; b < 7; b++) { const t = (b + 0.5) / 7; bushes.push([q0[0] + nx * t + (rr() - 0.5) * 1.6 * -uz, q0[1] + nz * t + (rr() - 0.5) * 1.6 * ux, 0.8 + rr() * 0.7]); }
+  }
+  const bushM = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1), std(0x3f6b2e, { roughness: 1 }), bushes.length), bd = new THREE.Object3D();
+  bushes.forEach(([x, z, r], i) => { bd.position.set(x, Y_LOT + 0.2 + r * 0.55, z); bd.scale.set(r * 1.2, r * 0.9, r * 1.2); bd.updateMatrix(); bushM.setMatrixAt(i, bd.matrix); }); bushM.castShadow = true; scene.add(bushM);
+  // lot signposts: pole + a two-sided board, one per lot, at the middle of each lot's plaza edge
+  const signCanvas = (txt, bg) => { const c = document.createElement('canvas'); c.width = 512; c.height = 160; const g = c.getContext('2d'); g.fillStyle = bg; g.fillRect(0, 0, 512, 160); g.strokeStyle = '#fff'; g.lineWidth = 6; g.strokeRect(8, 8, 496, 144);
+    g.fillStyle = '#fff'; g.font = '800 70px "Plus Jakarta Sans", system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt, 256, 84); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = MAX_ANISO; return t; };
+  const SIGN = { E: ['EAST LOT', '#2f6db5'], S: ['SOUTH LOT', '#2e8b57'], W: ['WEST LOT', '#d97706'], N: ['NORTH LOT', '#8a3b8f'] };
+  const mid = { E: 0, S: Math.PI / 2, W: Math.PI, N: 1.5 * Math.PI };
+  for (const k in SIGN) {
+    shapePoint(mid[k], PARK_IN + 8, q0); shapePoint(mid[k], PARK_IN + 9, q1); let nx = q1[0] - q0[0], nz = q1[1] - q0[1]; const L = Math.hypot(nx, nz); nx /= L; nz /= L;
+    const g = new THREE.Group(); g.position.set(q0[0], Y_LOT, q0[1]); g.rotation.y = Math.atan2(nx, nz);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 7.5, 8), std(0x3a3f4a, { roughness: 0.5, metalness: 0.4 })); pole.position.y = 3.75; pole.castShadow = true; g.add(pole);
+    const tex = signCanvas(SIGN[k][0], SIGN[k][1]);
+    for (const side of [1, -1]) { const pl = new THREE.Mesh(new THREE.PlaneGeometry(6, 1.9), new THREE.MeshBasicMaterial({ map: tex })); pl.position.set(0, 7.4, side * 0.12); pl.rotation.y = side > 0 ? 0 : Math.PI; g.add(pl); }
+    scene.add(g);
+  }
+  // parked cars: slots = the same bays as the painted lines (radial, 2.6 m apart, rows as above), 50 picked at random
+  const lotAt = (x, z, d) => { const ax = Math.abs(x) / (A0 + d), az = Math.abs(z) / (B0 + d); return az >= ax ? (z > 0 ? 'S' : 'N') : (x > 0 ? 'E' : 'W'); };   // same rule as lotOf (defined later in the file)
+  const WROW = [3, 3, 2, 1], slots = [], qs = [0, 0];                    // same bay grid as the painted lines; WROW = how much more likely a row is to hold a car (rows near the stadium fill first)
+  BAY_ROWS.forEach((dd, ri) => { for (let i = 0; i < BAY_EDGES.length - 1; i++) {
+      const th = (BAY_EDGES[i] + BAY_EDGES[i + 1]) / 2; shapePoint(th, dd, qs); const x = qs[0], z = qs[1];
+      if (spurSamples.some(p => Math.hypot(p.x - x, p.z - z) < 11)) continue;
+      const off = Math.abs(((th - Q) % (Math.PI / 2) + Math.PI / 2) % (Math.PI / 2)); if (Math.min(off, Math.PI / 2 - off) < 0.04) continue;   // keep clear of the kerb islands
+      slots.push({ x, z, yaw: radialYaw(th, dd), lot: lotAt(x, z, dd), w: WROW[ri] * (0.3 + rr()) }); } });
+  const want = { E: 13, S: 13, W: 12, N: 12 }, cars = [];
+  for (const k of ['E', 'S', 'W', 'N']) cars.push(...slots.filter(sl => sl.lot === k).sort((a, b) => b.w - a.w).slice(0, want[k]));
+  const NC = cars.length, pal = [0xf2f2f0, 0x1a1c20, 0xb9bec6, 0xc23b22, 0x2f6db5, 0x6b7280, 0x2e5d3a, 0xe0a321, 0x7a1f2b, 0xdfe3e8].map(h => new THREE.Color(h));
+  const carBody = new THREE.InstancedMesh(new THREE.BoxGeometry(1.8, 0.62, 4.3).translate(0, 0.55, 0), std(0xffffff, { roughness: 0.32, metalness: 0.35 }), NC);
+  const carCab = new THREE.InstancedMesh(new THREE.BoxGeometry(1.55, 0.55, 2.3).translate(0, 1.12, -0.15), std(0x151a21, { roughness: 0.15, metalness: 0.4 }), NC);
+  const carWheel = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.34, 0.34, 0.25, 12).rotateZ(Math.PI / 2), std(0x0c0c0e, { roughness: 0.9 }), NC * 4);
+  const cd = new THREE.Object3D(), wm = new THREE.Matrix4();
+  cars.forEach((c, i) => {
+    cd.position.set(c.x, Y_LOT, c.z); cd.rotation.set(0, c.yaw + (rr() < 0.5 ? 0 : Math.PI) + (rr() - 0.5) * 0.05, 0); cd.updateMatrix();
+    carBody.setMatrixAt(i, cd.matrix); carCab.setMatrixAt(i, cd.matrix); carBody.setColorAt(i, pal[(rr() * pal.length) | 0]);
+    let w = 0; for (const ox of [-0.9, 0.9]) for (const oz of [-1.35, 1.35]) { wm.copy(cd.matrix).multiply(new THREE.Matrix4().makeTranslation(ox, 0.14, oz)); carWheel.setMatrixAt(i * 4 + w++, wm); }
+  });
+  for (const m of [carBody, carCab, carWheel]) { m.castShadow = true; m.receiveShadow = true; scene.add(m); }
+  carBody.instanceColor.needsUpdate = true;
+  window.__parkedCars = NC;                                              // for the test console
+}
+
 </script>
 </body>
 </html>
