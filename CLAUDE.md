@@ -46,7 +46,7 @@ a Forge Forward branded UI that works on phones (price panel, scoreboard and vie
 - The UI follows the Forge Forward brand guide (Plus Jakarta Sans, `--ff-*` tokens, charcoal buttons, plain voice); the surroundings keep the plaza, parking ring and shops unless the user says otherwise.
 
 ## How to run / verify
-- Serve: `cd` to this folder, `node proxy/server.mjs` (serves the page on 0.0.0.0:8765; the photo API in it is currently unused by the page), open `http://localhost:8765/index.html`. `python3 -m http.server 8765` works too. After editing, reload with cache bypass.
+- Serve: `cd` to this folder, `python3 -m http.server 8765`, open `http://localhost:8765/index.html`. Do NOT use `node proxy/server.mjs`: it serves only `/index.html`, so `css/` and `src/` return 404 and the page stays blank. After editing, reload with cache bypass (or add a new `?v=` query).
 - Syntax check every module: `for f in $(find src -name '*.js'); do node --check "$f" || echo FAIL $f; done`.
 - Parity check after any change to the scene build: run `tools/parity/fingerprint.js` in the page (see `tools/parity/README.md` for the expected values). Builders must keep the original call order or the seeded random sequence, and so the look, changes.
 - Visual check with a browser tool: screenshot the Overview (top-down), Aerial, a section, a seat (match + scoreboard), the checkout pop-up and a phone width (resize to ~390 px); check the console is empty.
