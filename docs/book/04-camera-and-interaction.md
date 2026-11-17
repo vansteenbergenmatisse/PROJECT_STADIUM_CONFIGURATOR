@@ -46,3 +46,8 @@ Test-tool note: screenshots can fire stray clicks (a seat, the Buy button) - cal
 
 ## Buttons and panel (entries 22-23)
 The camera is locked, so the four view buttons are the way back to Overview / Aerial / Descent (and Roof toggles the roof). They are bottom centre on desktop, top on phones. The price panel (`#panel`) is `display:none` unless `nav.level` is not overview. Keys: D descent, R roof, Esc back, arrows = head turn at a seat.
+
+## Where the code lives (since history entry 30)
+- Camera: `src/interaction/camera-rig.js` (`flyTo`, presets, head-turn maths `updateLook` / `turnHead`); navigation and the section-first rule: `src/interaction/selection.js`.
+- Picking: `src/interaction/picking.js` (ray + seat grid), hover reaction `hover.js`, every key / pointer handler `input.js` (Esc, D, R, arrows, drag, 6 px click rule), fold buttons and the H key `src/ui/fold-buttons.js`.
+- Hover card `src/ui/hover-card.js`; panel `src/ui/price-panel.js`. Listeners are registered through the one group in `src/core/listeners.js`.

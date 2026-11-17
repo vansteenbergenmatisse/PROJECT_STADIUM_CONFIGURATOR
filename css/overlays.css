@@ -1,0 +1,27 @@
+/* overlays.css - full-screen and floating extras: #vignette, #help (hidden), the #loading screen, .sr-only, and the fold buttons that put the cards away (.fold, .is-folded). Separate from hud/panel because it overrides them and must come after them. */
+
+#vignette { position:fixed; inset:0; pointer-events:none; z-index:0; background:radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0) 62%, rgba(10,14,28,.22) 100%); }
+#help { position:fixed; left:16px; bottom:16px; z-index:2; padding:8px 12px; max-width:calc(100vw - 372px); background:var(--ff-white); border:1px solid var(--ff-line-200); border-radius:var(--ff-radius-sm);
+  box-shadow:var(--ff-shadow-xs); font-size:12px; line-height:1.6; color:var(--ff-slate-500); }
+/* loading screen: shown from the first byte. The solid colour is the loader's own grass colour (so there is no flash), the animation is assets/loader.html in an iframe that loads in parallel
+   with three.js and is never waited for. It fades out (200 ms, none with reduced motion) after the first rendered frame; this is the only place the UI uses a transition. */
+#loading { position:fixed; inset:0; z-index:10; background:#4AA44E; }
+#loading iframe { position:absolute; inset:0; width:100%; height:100%; border:0; display:block; }
+#loading.done { opacity:0; transition:opacity .2s linear; pointer-events:none; }
+@media (prefers-reduced-motion:reduce) { #loading.done { transition:none; } }
+.sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+
+/* ---- fold buttons (batch 25): every floating card (price panel, scoreboard, view buttons) can be put away and brought back. Folded = only the small button stays. ---- */
+.fold { position:absolute; top:10px; right:10px; z-index:1; height:28px; padding:0 12px; border:1px solid var(--ff-line-200); border-radius:var(--ff-radius-pill); background:var(--ff-white); color:var(--ff-charcoal-900); font-size:12px; font-weight:600; line-height:1; cursor:pointer; }
+.fold:hover { background:var(--ff-sand-100); }
+.is-folded > :not(.fold) { display:none !important; }
+.is-folded > .fold { position:static; }
+/* Folded = the card is gone. Only a 28 px "+" dot stays at its corner so it can be brought back (or press H for all cards). */
+#panel.is-folded, #hud.is-folded, #scorecard.is-folded { padding:0; width:auto; min-width:0; background:transparent; border:0; box-shadow:none; border-radius:0; overflow:visible; }
+.is-folded > .fold { width:28px; padding:0; font-size:16px; line-height:1; opacity:.8; }
+#scorecard.is-folded::before, #scorecard.is-folded::after { display:none; }
+#hud { display:flex; align-items:center; gap:8px; }
+#hud .fold { position:static; }
+#views { min-width:0; }
+@media (max-width:760px) { #hud.is-folded, #panel.is-folded { right:auto !important; } }   /* phones stretch both cards edge to edge: a folded card shrinks to its button */
+

@@ -1,0 +1,35 @@
+/* responsive.css - the phone and small-tablet layout (max-width 760 px, touch, short landscape). Loaded LAST on purpose: these rules override the desktop rules in every other file at equal specificity, so the cascade order must not change. */
+
+/* ---- phones and small tablets ---- */
+.m-only { display:none; }
+@media (max-width:760px) { .m-only { display:inline; } }
+@media (hover:none) { #tip { display:none !important; } }                       /* no hover on touch: tap a section, then tap a seat */
+@media (max-width:760px) {
+  :root { --ff-button-h:44px; --ff-tab-h:44px; }
+  html,body { overscroll-behavior:none; }
+  #hud { left:max(8px, env(safe-area-inset-left)); right:max(8px, env(safe-area-inset-right)); top:max(8px, env(safe-area-inset-top)); max-width:none; padding:10px 12px; }
+  #hud h1 { font-size:15px; display:inline; margin-right:8px; }
+  #hud p#stats { display:inline; font-size:11px; margin:0; }
+  #views { margin-top:8px; gap:6px; }
+  .tabs { flex:1 1 auto; }
+  .tab { flex:1 1 auto; padding:0 8px; }
+  #views .btn { padding:0 12px; }
+  /* phones: the panel is a SLIM bar pinned to the bottom (a title, one price, the buttons); everything optional is hidden */
+  #panel { top:auto; bottom:max(8px, env(safe-area-inset-bottom)); left:max(8px, env(safe-area-inset-left)); right:max(8px, env(safe-area-inset-right)); width:auto;
+    max-height:30vh; max-height:30dvh; padding:12px 14px; border-radius:var(--ff-radius-lg); }
+  #panel h2, #legend, .opt, .tk-foot, #panel .note { display:none !important; }
+  #selection { margin-top:0; padding-top:0; border-top:0; display:flex; flex-wrap:wrap; align-items:center; gap:6px 12px; }
+  #selection > h3 { flex:1 1 100%; margin:0; font-size:15px; }
+  #selection > .big { flex:1 1 auto; font-size:24px; } #selection > .big small { font-size:11px; }
+  #selection > .btn, #selection .seat .btn { margin:0; height:44px; }
+  #selection > .hint { flex:1 1 100%; margin:0; padding:8px 10px; font-size:13px; line-height:1.4; }
+  #selection .seat { flex:1 1 100%; display:flex; align-items:center; gap:10px; margin:0; } #selection .seat .tkwrap { flex:1 1 auto; min-width:0; box-shadow:none; }
+  #selection .seat .tk-l { padding:6px 10px; } #selection .seat .tk-r { padding:6px 10px; min-width:64px; } #selection .seat .tk b { font-size:14px; } #selection .seat .tk em { font-size:15px; }
+  #selection .vip { flex:1 1 100%; margin:0; } #selection .vip-main { padding:10px 12px; } #selection .vip-main > b { margin:2px 0 4px; font-size:15px; } #selection .vip-meta { display:none; } #selection .vip-stub { width:84px; padding:8px; } #selection .vip-stub .bar { height:18px; margin:4px; }
+  #panel.is-seat #selection > h3, #panel.is-seat #selection > .big { display:none; }
+  .d-only { display:none; }
+  #panel .btn { margin-top:10px; }
+  .vip-stub { width:92px; }
+  #help { display:none; }
+}
+@media (max-width:760px) and (max-height:520px) { #panel { max-height:44dvh; } }   /* phone held sideways */

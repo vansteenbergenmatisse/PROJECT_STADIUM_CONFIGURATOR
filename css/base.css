@@ -1,0 +1,9 @@
+/* base.css - page-level resets and defaults (box-sizing, html/body, canvas, button font, focus ring) and the brand rule that the UI has no transitions. Separate so the element defaults come before any component style. */
+
+* { box-sizing:border-box; }
+html,body { margin:0; height:100%; background:#bcd7ee; overflow:hidden; font-family:var(--ff-font-sans); font-size:14px; line-height:1.55; color:var(--ff-charcoal-900); }
+canvas { display:block; touch-action:none; }
+button { font-family:inherit; }
+/* brand rule: nothing slides, fades or lifts. States switch at once (no CSS transitions or animations in the UI). */
+:focus-visible { outline:none; box-shadow:var(--ff-shadow-focus); }
+

@@ -1,0 +1,21 @@
+/* loader.css - the loading screen (#loading): charcoal field, a one-stroke stadium outline that draws itself, a hairline progress bar and one quiet line of text.
+   Why: the old screen was a 224 KB iframe; this is pure CSS + inline SVG, no request. Reads --ff-* tokens from tokens.css, with literal fallbacks so the first paint is already dark.
+   Lifecycle: shown from the first byte, --p (0..1) is set by src/ui/loader.js, class done fades it out, then it is removed. */
+#loading { position:fixed; inset:0; z-index:10; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:28px;
+  background:var(--ff-charcoal-900,#0E1220); color:var(--ff-fog,#8A8F9C); font-family:var(--ff-font-sans,system-ui,sans-serif); --p:0; }
+#loading.done { opacity:0; transition:opacity .4s ease; pointer-events:none; }
+/* outline: pathLength="1" on every shape so one dash value (1) works for all of them */
+#loading svg { width:min(380px,76vw); height:auto; fill:none; stroke:var(--ff-mist-100,#D5D7DE); stroke-width:.8; stroke-linejoin:round; stroke-linecap:round; }
+#loading svg * { stroke-dasharray:1; stroke-dashoffset:1; animation:ld-draw 2.2s cubic-bezier(.65,0,.35,1) forwards; }
+#loading svg .in { animation-delay:.35s; opacity:.7; }
+#loading svg .pt { animation-delay:.8s; opacity:.45; }
+@keyframes ld-draw { to { stroke-dashoffset:0; } }
+#loading .bar { width:min(160px,40vw); height:1px; background:rgba(213,215,222,.16); overflow:hidden; }
+#loading .bar i { display:block; height:100%; background:var(--ff-mist-100,#D5D7DE); transform-origin:0 50%; transform:scaleX(var(--p)); transition:transform .35s ease-out; }
+#loading .txt { margin:-8px 0 0; font-size:12px; font-weight:500; letter-spacing:.14em; text-transform:uppercase; }
+.sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+/* reduced motion: static, fully drawn outline, no fade, no bar easing */
+@media (prefers-reduced-motion:reduce) {
+  #loading svg * { animation:none; stroke-dashoffset:0; }
+  #loading .bar i, #loading.done { transition:none; }
+}

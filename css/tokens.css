@@ -1,0 +1,18 @@
+/* tokens.css - the Forge Forward design tokens: every --ff-* custom property (fonts, colours, radii, shadows, control heights). Loaded first because every other file reads these variables. Contains no selectors except :root. */
+
+/* ---- Forge Forward brand tokens (from the brand guide chapters 02 Color, 03 Type, 04 Layout, 07 Details, 10 Tokens). Values copied, names kept. ---- */
+:root {
+  --ff-font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --ff-ivory-50:#FCFBF8; --ff-white:#FFFFFF; --ff-sand-50:#FDFCFA; --ff-sand-75:#FAF9F6; --ff-sand-100:#F3F0EA; --ff-sand-150:#F1EEE8;
+  --ff-line-100:#EEEAE3; --ff-line-200:#E7E3DC; --ff-line-300:#D6D1C7;
+  --ff-charcoal-900:#0E1220; --ff-charcoal-800:#1B2030; --ff-slate-700:#2A2E39; --ff-slate-550:#4A4F5C; --ff-slate-500:#555A66; --ff-slate-400:#6B6F7A;
+  --ff-mist-200:#B9BCC6; --ff-mist-100:#D5D7DE; --ff-fog:#8A8F9C;
+  --ff-red-500:#D93A31; --ff-red-600:#B8302A; --ff-red-50:#FCEFED;
+  --ff-radius-xs:6px; --ff-radius-sm:8px; --ff-radius-lg:12px; --ff-radius-2xl:20px; --ff-radius-pill:999px;
+  --ff-shadow-xs:0 1px 2px rgba(14,18,32,0.04);
+  --ff-shadow-card:0 16px 36px -24px rgba(14,18,32,0.30);
+  --ff-shadow-float:0 18px 36px -22px rgba(14,18,32,0.35);
+  --ff-shadow-panel:0 30px 70px -40px rgba(14,18,32,0.35);
+  --ff-shadow-focus:0 0 0 2px #FCFBF8, 0 0 0 4px #0E1220;
+  --ff-bar-h:0px; --ff-button-h:40px; --ff-tab-h:38px; 
+}

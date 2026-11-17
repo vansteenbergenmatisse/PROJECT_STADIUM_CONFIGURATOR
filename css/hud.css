@@ -1,0 +1,27 @@
+/* hud.css - the HUD card with the four view buttons (#hud, #views, .tabs, .tab) and the shared .btn buttons, plus the rules that hide the removed title, seat count and help hint. Separate because it is the always-on chrome. */
+
+/* HUD (left) and price panel (right): white cards on the 3D scene, warm 1 px border, soft shadow */
+#hud { position:fixed; left:16px; top:calc(var(--ff-bar-h) + 16px); z-index:2; max-width:calc(100vw - 32px); padding:14px 16px;
+  background:var(--ff-white); border:1px solid var(--ff-line-200); border-radius:var(--ff-radius-lg); box-shadow:var(--ff-shadow-card); }
+#hud h1, #hud p#stats { display:none !important; }                       /* title + seat count removed on request; the four view buttons stay (the camera is locked, they are the only way to Overview / Aerial / Descent) */
+#help { display:none !important; }                                         /* bottom-left hint removed on request */
+#panel:not(.has-sel) { display:none !important; }                         /* the price panel exists only while a section / seat / skybox is selected */
+@media (min-width:761px) { #hud { left:50%; transform:translateX(-50%); top:auto; bottom:16px; padding:8px 10px; } }   /* desktop: the buttons sit bottom centre */
+#hud h1 { margin:0; font-size:17px; line-height:1.3; font-weight:800; letter-spacing:0; }
+#hud p { margin:2px 0 12px; font-size:12px; line-height:1.6; color:var(--ff-slate-400); }
+#views { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.tabs { display:flex; background:var(--ff-white); border:1px solid var(--ff-line-200); border-radius:var(--ff-radius-sm); box-shadow:var(--ff-shadow-xs); overflow:hidden; }
+.tab { height:var(--ff-tab-h); padding:0 14px; background:none; border:0; border-left:1px solid var(--ff-line-100); font-size:13px; font-weight:500; color:var(--ff-slate-550); cursor:pointer; }
+.tab:first-child { border-left:0; }
+.tab:hover { color:var(--ff-red-600); }
+.tab[aria-selected="true"] { color:var(--ff-red-500); font-weight:600; box-shadow:inset 0 -2px 0 var(--ff-red-500); }   /* active tab: the one red use in the controls */
+
+/* buttons: charcoal primary, white secondary with warm border. Never red. */
+.btn { height:var(--ff-button-h); padding:0 16px; border-radius:var(--ff-radius-sm); font-size:14px; font-weight:600; line-height:1; cursor:pointer; border:1px solid var(--ff-line-200); background:var(--ff-white); color:var(--ff-charcoal-900); }
+.btn:hover { background:var(--ff-sand-100); }
+.btn--primary { background:var(--ff-charcoal-900); border-color:var(--ff-charcoal-900); color:var(--ff-white); }
+.btn--primary:hover { background:var(--ff-charcoal-800); }
+.btn[aria-pressed="true"] { background:var(--ff-charcoal-900); border-color:var(--ff-charcoal-900); color:var(--ff-white); }
+.btn[aria-pressed="true"]:hover { background:var(--ff-charcoal-800); }
+#views .btn { height:var(--ff-tab-h); font-size:13px; padding:0 14px; }
+
