@@ -125,6 +125,38 @@
   .tab:hover { color:var(--ff-red-600); }
   .tab[aria-selected="true"] { color:var(--ff-red-500); font-weight:600; box-shadow:inset 0 -2px 0 var(--ff-red-500); }   /* active tab: the one red use in the controls */
 
+  /* buttons: charcoal primary, white secondary with warm border. Never red. */
+  .btn { height:var(--ff-button-h); padding:0 16px; border-radius:var(--ff-radius-sm); font-size:14px; font-weight:600; line-height:1; cursor:pointer; border:1px solid var(--ff-line-200); background:var(--ff-white); color:var(--ff-charcoal-900); }
+  .btn:hover { background:var(--ff-sand-100); }
+  .btn--primary { background:var(--ff-charcoal-900); border-color:var(--ff-charcoal-900); color:var(--ff-white); }
+  .btn--primary:hover { background:var(--ff-charcoal-800); }
+  .btn[aria-pressed="true"] { background:var(--ff-charcoal-900); border-color:var(--ff-charcoal-900); color:var(--ff-white); }
+  .btn[aria-pressed="true"]:hover { background:var(--ff-charcoal-800); }
+  #views .btn { height:var(--ff-tab-h); font-size:13px; padding:0 14px; }
+
+  #panel { position:fixed; right:16px; top:calc(var(--ff-bar-h) + 16px); z-index:2; width:324px; max-height:calc(100vh - var(--ff-bar-h) - 32px); overflow:auto; padding:20px;
+    background:var(--ff-white); border:1px solid var(--ff-line-200); border-radius:var(--ff-radius-2xl); box-shadow:var(--ff-shadow-panel); }
+  .eyebrow, #panel h2 { margin:0 0 10px; font-size:13px; line-height:1.2; font-weight:800; letter-spacing:.14em; text-transform:uppercase; color:var(--ff-charcoal-900); }
+  #panel h3 { margin:0 0 4px; font-size:17px; line-height:1.3; font-weight:800; }
+  #panel p { margin:6px 0; font-size:14px; line-height:1.55; color:var(--ff-slate-500); }
+  #panel p.note { font-size:12px; line-height:1.6; color:var(--ff-slate-400); }
+  #panel .row { display:flex; justify-content:space-between; gap:12px; padding:8px 0; border-top:1px solid var(--ff-line-100); font-size:14px; color:var(--ff-slate-700); }
+  #panel .row:first-of-type { border-top:0; }
+  #panel .row b { font-weight:800; color:var(--ff-charcoal-900); font-variant-numeric:tabular-nums; }
+  #panel .big { font-size:32px; line-height:1.2; font-weight:800; letter-spacing:-.02em; color:var(--ff-charcoal-900); font-variant-numeric:tabular-nums; }
+  #panel .big small { font-size:12px; font-weight:600; letter-spacing:0; color:var(--ff-slate-400); }
+  #panel .hint { margin:12px 0 0; padding:10px 12px; border-radius:var(--ff-radius-sm); background:var(--ff-sand-100); color:var(--ff-slate-700); }
+  #panel .seat { margin-top:12px; }
+  #panel .seat .tkwrap { border:1px solid var(--ff-line-200); border-radius:var(--ff-radius-lg); overflow:hidden; box-shadow:var(--ff-shadow-card); }
+  #panel .btn { margin-top:14px; }
+  #panel .btn + .btn { margin-left:8px; }
+  .dot { display:inline-block; width:10px; height:10px; border-radius:50%; background:#ff00c8; vertical-align:-1px; margin-right:4px; }   /* matches the selected-seat colour in the 3D scene */
+  .field { display:block; margin-top:12px; }
+  .field span { display:block; margin-bottom:4px; font-size:13px; font-weight:600; color:var(--ff-slate-700); }
+  .field input { width:100%; height:44px; padding:0 12px; border:1px solid var(--ff-line-200); border-radius:var(--ff-radius-sm); background:var(--ff-white); font:inherit; font-size:15px; color:var(--ff-charcoal-900); }
+  #panel p.err { color:var(--ff-red-600); font-weight:600; }
+  #selection { margin-top:16px; padding-top:16px; border-top:1px solid var(--ff-line-100); }
+
 </style>
 </head>
 <body>
