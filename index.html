@@ -1,0 +1,93 @@
+<!doctype html>
+<!--
+  STADIUM - single-file three.js (r160, jsDelivr CDN import map). No build step, no package manager.
+  Keep this comment, every /* ---- section ---- */ comment and docs/book/*.md in sync with the code (see CLAUDE.md).
+  After a context clear: read CLAUDE.md, docs/book/00-index.md, then this comment.
+
+  WHAT THIS IS NOW (Soccer City / Johannesburg style stadium in a green meadow, 11 v 11 demo match, demo checkout):
+    - Bowl: rounded calabash plan (superellipse exponent 2.4, inner half extents 72 x 52 m, pitch 105 x 68 m), three seat tiers
+      (24 / 20 / 26 rows, 28 sections each) with a skybox band between tier 1 and 2.
+    - Seats: 78,397 seats, ALL in ONE InstancedMesh (60 tris each = 87% of the scene's ~5.4 M triangles). Instance id -> typed tables (tier, row, number, section, colour code, price, position).
+      Seat = 5 boxes (pan, reclined back, 2 arms, pedestal), light baked by face direction into the vertex colours (top bright, sides mid, underside dark).
+      Three tones by colour code: 0 orange, 1 light orange, 2 pale-gold diamond lattice. Seats do not cast shadows (re-baking them stalled flights).
+      STRAIGHT AISLES: section edges are fixed plan angles (theta) from the middle row of each tier, so every aisle is a straight line
+      (measured <= 0.01 m sideways deviation over ~20 m). See forEachSeat + sAtTheta / thetaAtS.
+    - AVAILABILITY (a made-up rule, not real inventory): only colour code 0 seats are for sale. Light-orange and gold seats are "Not available" (no hover highlight, cannot be picked,
+      never offered as extra seats in the cart). Section cards say "N seats available"; section / tier price ranges use available seats only.
+    - Facade: bulging pot profile, pixel-mosaic skin, dark expansion joints, teal glazed band.
+      GATES: 4 ENTRANCES A-D (green sign, wide porch) on the access-road angles and 4 EXITS 1-4 (red sign) halfway between them. (The red / green approach lanes were removed on request.)
+    - Roof: translucent ETFE-foil ring (diamond cushions in a thin steel lattice, glossy, see-through, no shadow of its own) with 104 radial steel ribs under it (they cast the only roof
+      shadow), grey inner rim, open over the pitch. R / Roof button hides it. While a SECTION is selected the roof is drawn at 40% opacity (setRoofFade) so the seats it covers stay visible;
+      with a single seat selected it is drawn at full opacity.
+    - Skyboxes: 56 dark glass suites (clickable, priced per seat).
+    - Surroundings: lush green mottled meadow, many scattered oak/pine trees plus ONE dense forest north-west (FOREST in the trees block), loop road + 4 access spurs (straight and radial
+      over the parking ring, ending in a rounded cap at the plaza edge), terracotta paved plaza, blue-grey perimeter wall, planters, a few small shops. NO houses (removed on request).
+    - Parking (NOT selectable), a car park since batch 25: asphalt surface split into 4 faintly tinted lots (E, S, W, N = plan-angle quarters, same rule as lotOf), kerb islands with bushes on
+      the 4 boundaries, a signpost per lot, 50 parked cars (13 / 13 / 12 / 12; 3 InstancedMeshes) parked on ONE shared bay grid (BAY_EDGES: radial side lines through all rows, same grid for cars). PARKING MARKINGS + FENCE block: YELLOW bay lines = where you may park, YELLOW HATCH strips with
+      NO PARKING signs along both sides of every access road + a solid yellow line on the plaza edge = where you may not, a chain-link fence round the outer edge with a gate portal
+      ("PARKING - ENTRANCE") over each access road. HEIGHTS (Y_LOT / Y_MARK / Y_PATH / Y_ROAD / Y_DASH constants) lift lot and roads off the meadow so they no longer z-fight with it.
+    - BOOT (batch 25): the page paints a loading screen first (#loading = assets/loader.html in an iframe, never waited for), three.js is modulepreloaded, the web font does not block rendering,
+      the build yields to the browser between big sections (yieldToPaint) and window.__boot holds millisecond marks per section. The loader fades out after the first drawn frame.
+    - FOLD BUTTONS (batch 25): the price panel, the scoreboard and the view buttons each have a Hide button (.fold, class is-folded). Hidden = the card is gone, only a 28 px "+" dot stays at its corner; H hides / shows all.
+    - Sky: blue gradient dome with sun disc + glow, drifting procedural clouds (shader), light blue haze; all re-centred on the camera every frame (updateSky).
+    - Pitch: mown stripes, lines, 1 m corner arcs, bump texture, goals with nets. PITCH SURROUND (block after the goals, all static and not pickable): one LED advertising strip (made-up
+      sponsors, emissive, dark back side) on a rounded rectangle 56.5 x 37.5 m, 4 corner flags, 2 low dugouts 0.9 m from the touchline (garnet / yellow benches) with technical-area lines,
+      fourth official desk + electronic board, 2 assistant referees with flags, 34 hi-vis stewards facing the stands, 12 photographers behind the goals, 4 TV tripods, spare balls.
+    - MATCH (select a seat): 22 simple figures + ball, Barcelona (garnet / blue) v Dortmund (yellow / black), 4-4-2 each, plain rules (dribble, pass, shoot, restart). Visual simulation, not real
+      data; figures are 1.25x life size. A dark LIVE SCOREBOARD card (Live notch, club-colour discs, score pill, clock pill = seconds since you sat down) shows while the match runs (#scorecard, updateScore).
+    - MATCHDAY LIFE (block before the trees): 16 plaza stalls (FOOD, DRINKS, PROGRAMMES, FAN SHOP, SCARVES, ICE CREAM) beside the 4 entrances, 8 flagpoles, a bus stop at the start of each
+      access road, and ~180 instanced walking fans (the only moving part besides the match and the clouds): they appear at the bus stops, follow the road kerb to the entrance;
+      a few leave across the plaza from the exits (fansUpdate in the loop). The cart sells the same categories as "Matchday extras" (EXTRAS list, MADE-UP demo prices).
+    - Camera: no free orbit / pan / zoom. It moves only by flyTo() after a click (section, seat, skybox) or the buttons Overview / Aerial / Descent. Selection flights
+      are slow on purpose (2.8-5.2 s by distance, quintic ease); the descent keeps its own 10 s cubic ease. Esc = back.
+      HEAD TURN: while one seat is selected you can look left / right / up / down (drag, or arrow keys) to follow the whole pitch; the camera position does not change.
+    - Interaction order: SECTION FIRST. Hover in the overview (or another block) = block card with price range + seats available; click = select block (other blocks darken, the selected one
+      keeps its natural colours); then hovering an AVAILABLE seat colours it vivid magenta (colour change on hover only, never on click); clicking it selects the seat.
+    - Prices: category/zone model (tier base x view zone x centre x row premium), shown only on the hover cards and in the selection panel (white ticket cards, a dark VIP ticket for skyboxes).
+      Formulas: docs/book/03-pricing.md. DEMO CHECKOUT = a pop-up (#modal): 1 Your cart (picture of the 3D view, seat stepper for the next available seats in the row, Matchday extras,
+      promo code DEMO10 = 10% off the tickets only, order summary) -> 2 Payment method (Mastercard / Visa as plain text, name, email, card, exp, CVV) -> 3 Ticket's details (notched pass,
+      entrance letter that matches a gate sign, demo bar code, extras to collect). Nothing is charged, stored or sent; card fields are dropped after Pay. Esc / backdrop closes it.
+    - UI: Forge Forward brand guide (the 11 Brand*.dc.html files): Plus Jakarta Sans (Google Fonts), --ff-* tokens in :root, ivory/white surfaces, warm borders, charcoal buttons (never red),
+      red only for the active tab / VIP badge / exit sign, plain voice, no animation in the UI chrome. Removed on request: the title card + seat count, the bottom-left hint, the always-on
+      price list, the red promise bar, and the photo / render feature. What is left: the four view buttons (Overview / Aerial / Descent / Roof; bottom centre on desktop, top on phones;
+      they are the only way back because the camera is locked), the hover card, the price panel (#panel, shown only while a section / seat / skybox is selected) and the scoreboard.
+    - MOBILE: <= 760 px = compact HUD (buttons only), a SLIM bottom bar when something is selected (<= 30dvh: price, buttons; tier list, notes and formulas hidden via .opt), compact scoreboard row,
+      the checkout pop-up becomes a bottom sheet, 44 px controls, 16 px inputs, safe-area insets, wider vertical field of view on tall screens (fitFov), pixel ratio capped at 1.5,
+      no hover tooltips on touch (hover:none). Tap a section, then tap a seat.
+    - Lighting / render: warm sun (SUN_POS, 3.2, the only shadow caster: ONE frozen 4096 PCFSoft map, +-340 m, ~0.17 m texels, 264 casters), hemisphere 0.62, a cool fill light 0.4 from the
+      opposite side (no shadow), Sky shader baked to a PMREM (IBL 0.2 on matte materials, seats keep their own env), FogExp2 light blue haze, ACES 0.9, CSS vignette overlay (#vignette).
+      Tried and rejected (flight stalls in the test browser): seats casting shadows, and a sharper shadow frustum inside the bowl.
+    - Photo mode (AI re-render through fal) existed in batches 10-19 and was REMOVED from this file in batch 20. proxy/ (server, .env, cache) is still in the project but unused by the page.
+
+  SCRIPT SECTION MAP (search for the markers):
+    geometry of the bowl | stand layout | renderer / scene (+ sky, clouds, sun, fill, shadow notes) | helpers | ground, plaza, pitch (+ goals, PITCH SURROUND) | terraces (+ facade, GATES, perimeter wall,
+    planters) | SEATS (+ pricing model) | skyboxes (glass) | roof (ETFE foil) | park (roads, parking bays, PARKING LOTS + cars, shops, MATCHDAY LIFE, trees, forest) | camera rig |
+    prices (display + availability) | 11 v 11 match | selection state + painting | UI (tabs, price panel, matchday extras, checkout) | head turn | fold buttons | picking | loop (bake + render + window.__stadium)
+    The script starts with a BOOT block (boot marks + yieldToPaint). In the park section: Access roads, PARKING MARKINGS + FENCE, PARKING LOTS.
+
+  GOTCHAS: never put a // comment mid-line before more code, and never put a */ inside a /* */ block (both break the module); ringStrip materials are DoubleSide;
+  superellipse theta is not the polar angle (but a constant-theta line IS straight); paintGeo() is hoisted and used by the seat geometry before its position in the file (mergeGeometries needs
+  all parts indexed or all non-indexed); lotOf is defined later than the parking block (the lots block has its own lotAt); the test browser can fire stray clicks and Chrome may serve a stale
+  index.html (reload with cache bypass); window.__stadium.selectSeat() bypasses the availability guard (that guard is in the pointer-up handler).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stadium</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Boot order (batch 25): the page must paint the loading screen at once and start fetching three.js in parallel, so nothing here blocks rendering.
+     The web font is loaded without blocking (preload + swap to stylesheet; system-ui is the fallback), and the three.js modules are preloaded so the download starts before the importmap is used. -->
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js">
+<link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/utils/BufferGeometryUtils.js">
+<link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/objects/Sky.js">
+<style>
+</style>
+</head>
+<body>
+</body>
+</html>
