@@ -440,6 +440,33 @@ function ringStrip(profile, material, { N = 480, cast = true, receive = true, t0
   return m;
 }
 
+/* ------------------------------------------------------------------ stand layout */
+const RUN = 0.85;
+const SKY_DEPTH_FRONT = 2;     // walkway in front of the skyboxes
+const BOX_H = 3.4, BOX_DEPTH = 5;
+const tiers = [
+  { name: 'Lower',  rows: 24, rise: 0.42, sections: 28, blue: 0.07 },
+  { name: 'Middle', rows: 20, rise: 0.50, sections: 28, blue: 0.10 },
+  { name: 'Upper',  rows: 26, rise: 0.62, sections: 28, blue: 0.16 },
+];
+let d = 0, y = 1.5;
+tiers[0].d0 = d; tiers[0].y0 = y;
+d += tiers[0].rows * RUN; y += tiers[0].rows * tiers[0].rise;       // end of tier 1
+const T1_END_D = d, Y1 = y;
+const GLASS_D = T1_END_D + SKY_DEPTH_FRONT;
+const BOX_TOP = Y1 + BOX_H, FASCIA_TOP = Y1 + 4.9;
+const BACK_D = GLASS_D + BOX_DEPTH;
+tiers[1].d0 = BACK_D; tiers[1].y0 = FASCIA_TOP;
+d = BACK_D + tiers[1].rows * RUN; y = FASCIA_TOP + tiers[1].rows * tiers[1].rise;
+const T2_END_D = d, Y2 = y;
+const WALK2 = 4;
+tiers[2].d0 = T2_END_D + WALK2; tiers[2].y0 = Y2 + 0.9;
+d = tiers[2].d0 + tiers[2].rows * RUN; y = tiers[2].y0 + tiers[2].rows * tiers[2].rise;
+const T3_END_D = d, Y3 = y;
+const FACADE_D = T3_END_D + 2.6;
+const ROOF_OUT = { d: FACADE_D + 4, y: Y3 + 13 }, ROOF_IN = { d: tiers[2].d0 - 2, y: Y3 - 1.5 };
+const FACADE_TOP = ROOF_OUT.y;
+
 </script>
 </body>
 </html>
