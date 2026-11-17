@@ -106,6 +106,25 @@
   html,body { margin:0; height:100%; background:#bcd7ee; overflow:hidden; font-family:var(--ff-font-sans); font-size:14px; line-height:1.55; color:var(--ff-charcoal-900); }
   canvas { display:block; touch-action:none; }
   button { font-family:inherit; }
+  /* brand rule: nothing slides, fades or lifts. States switch at once (no CSS transitions or animations in the UI). */
+  :focus-visible { outline:none; box-shadow:var(--ff-shadow-focus); }
+
+  /* HUD (left) and price panel (right): white cards on the 3D scene, warm 1 px border, soft shadow */
+  #hud { position:fixed; left:16px; top:calc(var(--ff-bar-h) + 16px); z-index:2; max-width:calc(100vw - 32px); padding:14px 16px;
+    background:var(--ff-white); border:1px solid var(--ff-line-200); border-radius:var(--ff-radius-lg); box-shadow:var(--ff-shadow-card); }
+  #hud h1, #hud p#stats { display:none !important; }                       /* title + seat count removed on request; the four view buttons stay (the camera is locked, they are the only way to Overview / Aerial / Descent) */
+  #help { display:none !important; }                                         /* bottom-left hint removed on request */
+  #panel:not(.has-sel) { display:none !important; }                         /* the price panel exists only while a section / seat / skybox is selected */
+  @media (min-width:761px) { #hud { left:50%; transform:translateX(-50%); top:auto; bottom:16px; padding:8px 10px; } }   /* desktop: the buttons sit bottom centre */
+  #hud h1 { margin:0; font-size:17px; line-height:1.3; font-weight:800; letter-spacing:0; }
+  #hud p { margin:2px 0 12px; font-size:12px; line-height:1.6; color:var(--ff-slate-400); }
+  #views { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .tabs { display:flex; background:var(--ff-white); border:1px solid var(--ff-line-200); border-radius:var(--ff-radius-sm); box-shadow:var(--ff-shadow-xs); overflow:hidden; }
+  .tab { height:var(--ff-tab-h); padding:0 14px; background:none; border:0; border-left:1px solid var(--ff-line-100); font-size:13px; font-weight:500; color:var(--ff-slate-550); cursor:pointer; }
+  .tab:first-child { border-left:0; }
+  .tab:hover { color:var(--ff-red-600); }
+  .tab[aria-selected="true"] { color:var(--ff-red-500); font-weight:600; box-shadow:inset 0 -2px 0 var(--ff-red-500); }   /* active tab: the one red use in the controls */
+
 </style>
 </head>
 <body>
