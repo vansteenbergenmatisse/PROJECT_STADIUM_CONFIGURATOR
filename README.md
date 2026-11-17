@@ -4,6 +4,8 @@ Pick a section, pick a seat, see the match from your seat. A 3D stadium in your 
 
 ## What it is
 
+**Live demo: <https://vansteenbergenmatisse.github.io/PROJECT_STADIUM_CONFIGURATOR/>**
+
 An interactive ticket picker for a stadium modelled on Soccer City in Johannesburg: an orange calabash facade, a see-through foil roof and a green meadow around it. You choose where to sit by clicking. The camera does not roam freely. It flies where you click, then you can turn your head from the seat.
 
 Everything is a demo. The checkout charges nothing, stores nothing and sends nothing. Ticket prices, sponsors, stall menus and seat availability are made up.
@@ -39,6 +41,10 @@ Everything is a demo. The checkout charges nothing, stores nothing and sends not
 
 You need an internet connection to load three.js and the font.
 
+## Hosting
+
+The live demo runs on GitHub Pages, served straight from the `main` branch (root folder). There is no build step, so every push to `main` redeploys the page within a couple of minutes. To host your own copy, fork the repo and turn on Pages under Settings, Pages, "Deploy from a branch", `main`, `/ (root)`. Netlify, Vercel and Cloudflare Pages also work with no build command.
+
 ## Run it on your laptop
 
 You need Git and either Python 3 or Node.js. Any static file server works.
@@ -57,7 +63,7 @@ No Python? Use Node instead:
 npx serve -l 8765
 ```
 
-Serve the folder over HTTP. Opening `index.html` straight from disk has not been tested.
+Serve the folder over HTTP. Opening `index.html` straight from disk has not been tested. The page works from a sub-path such as the Pages URL above, because every file it loads is referenced by a relative path.
 
 ## Project layout
 
