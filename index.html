@@ -340,6 +340,19 @@
 <div id="help">Pick a section first. Then pick a seat in it. Select a seat to watch the match, then drag or use the arrow keys to look around. D descent · R roof · Esc back.</div>
 
 <script type="module">
+import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { Sky } from 'three/addons/objects/Sky.js';
+
+/* ------------------------------------------------------------------ boot: loading screen first, scene second
+   The scene is built synchronously (a few hundred ms to seconds of main-thread work). `yieldToPaint()` hands the thread back so the browser can draw the loading screen before the next heavy block
+   starts (rAF when the tab is visible, a short timer otherwise so a background tab still finishes). `mark()` records milliseconds since navigation start in window.__boot for profiling. */
+const boot = window.__boot = [];
+const mark = name => boot.push([name, Math.round(performance.now())]);
+const yieldToPaint = () => new Promise(done => { const t = setTimeout(done, 80); requestAnimationFrame(() => { clearTimeout(t); setTimeout(done, 0); }); });
+mark('module start');
+await yieldToPaint();
+
 </script>
 </body>
 </html>
