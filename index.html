@@ -303,7 +303,43 @@
   }
   @media (max-width:760px) and (max-height:520px) { #panel { max-height:44dvh; } }   /* phone held sideways */
 </style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
 </head>
 <body>
+<div id="loading" role="status"><iframe src="assets/loader.html" title="" tabindex="-1" aria-hidden="true"></iframe><span class="sr-only">Building the stadium.</span></div>
+<div id="vignette" aria-hidden="true"></div>
+<header id="hud">
+  <h1>Stadium</h1>
+  <p id="stats">Loading seats.</p>
+  <div id="views" role="group" aria-label="Camera views"></div>
+  <button class="fold" type="button" aria-expanded="true" aria-label="Hide the view buttons" data-hide="Hide" data-show="+">Hide</button>
+</header>
+<aside id="panel" aria-label="Ticket prices">
+  <button class="fold" type="button" aria-expanded="true" aria-label="Hide the ticket prices" data-hide="Hide" data-show="+">Hide</button>
+  <h2>Ticket prices</h2>
+  <div id="legend"></div>
+  <div id="selection" aria-live="polite"></div>
+</aside>
+<div id="tip" role="status"></div>
+<div id="modal" hidden></div>
+<div id="scorecard" hidden role="status" aria-label="Simulated match score">
+  <button class="fold" type="button" aria-expanded="true" aria-label="Hide the scoreboard" data-hide="Hide" data-show="+">Hide</button>
+  <div class="sc-live"><i></i>Live</div>
+  <div class="sc-row">
+    <div class="sc-team"><span class="disc fcb"></span><b>Barcelona</b></div>
+    <div class="sc-score" id="sc-score">0 - 0</div>
+    <div class="sc-team"><span class="disc bvb"></span><b>Dortmund</b></div>
+  </div>
+  <div class="sc-clock" id="sc-clock">00:00</div>
+</div>
+<div id="help">Pick a section first. Then pick a seat in it. Select a seat to watch the match, then drag or use the arrow keys to look around. D descent · R roof · Esc back.</div>
+
+<script type="module">
+</script>
 </body>
 </html>
