@@ -929,6 +929,59 @@ function forEachSeat(cb) {
 let seatCount = 0;
 forEachSeat(() => { seatCount++; });
 
+/* ------------------------------------------------------------------ pricing model: category / zone pricing, as clubs sell tickets */
+// price = tier base × view-zone × centre-of-pitch × row premium × fixture demand, rounded to 5. Representative model, not any club's rate card.
+const CUR = '€', DEMAND = 1.0;                  // DEMAND = per-fixture multiplier slot (match category A/B/C or live demand)
+const TIER_BASE = [95, 62, 38];                 // Lower / Middle / Upper
+const SUITE_BASE = 420, SUITE_SEATS = 10;       // skybox: price per seat, sold as a suite
+const round5 = v => Math.round(v / 5) * 5;
+function zoneFactors(x, z, d) {                 // long-side centre = best view, behind the goals = cheapest
+  const lf = Math.pow(Math.abs(z) / (B0 + d), EXP);                      // 1 on the long sides, 0 behind the goals
+  const c = 1 - Math.min(1, Math.abs(x) / (PITCH_L / 2 + 20));           // 1 at the halfway line, 0 past the penalty areas
+  return { zone: 0.80 + 0.42 * lf, centre: 1 + 0.30 * lf * c };
+}
+function seatPriceParts(ti, r, x, z) {
+  const t = tiers[ti], d = t.d0 + r * RUN + RUN / 2, f = zoneFactors(x, z, d);
+  return { base: TIER_BASE[ti], zone: f.zone, centre: f.centre, row: 1 + 0.14 * (1 - r / (t.rows - 1)) };   // front rows +14%
+}
+function seatPriceOf(ti, r, x, z) { const p = seatPriceParts(ti, r, x, z); return round5(p.base * p.zone * p.centre * p.row * DEMAND); }
+
+const seatMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.5, metalness: 0, clearcoat: 0.5, clearcoatRoughness: 0.35, envMap: envTex, envMapIntensity: 0.4 });   // broad soft sheen, no sparkle at grazing angles
+const seats = new THREE.InstancedMesh(seatGeometry(), seatMat, seatCount);
+seats.name = 'seats'; seats.receiveShadow = true; seats.castShadow = false;
+
+// per-instance identity: the instance id indexes these tables
+const seatTier = new Uint8Array(seatCount), seatRow = new Uint8Array(seatCount),
+      seatNumber = new Uint16Array(seatCount), seatSection = new Uint8Array(seatCount),
+      seatCode = new Uint8Array(seatCount), seatPrice = new Uint16Array(seatCount);                       // 0 red, 1 blue
+const seatPos = new Float32Array(seatCount * 3);
+const sectionIds = new Map();                                    // "tier:section" -> instance ids
+const grid = new Map(); const CELL = 3;
+const gkey = (cx, cz) => (cx + 1000) * 4000 + (cz + 1000);
+const COL = { red: new THREE.Color(0xf0600f), blue: new THREE.Color(0xff8a1c), gold: new THREE.Color(0xffc861), hot: new THREE.Color(0xffe27a), pick: new THREE.Color(0xffffff) };   // Soccer City: two tones of orange
+{
+  const dummy = new THREE.Object3D(); let id = 0;
+  forEachSeat((ti, r, s, num, x, yv, z, nx, nz, f, L) => {
+    dummy.position.set(x, yv, z); dummy.rotation.set(0, Math.atan2(nx, nz), 0); dummy.updateMatrix();
+    seats.setMatrixAt(id, dummy.matrix);
+    seatTier[id] = ti + 1; seatRow[id] = r + 1; seatNumber[id] = num; seatSection[id] = s + 1;
+    seatPos[id * 3] = x; seatPos[id * 3 + 1] = yv; seatPos[id * 3 + 2] = z;
+    const clump = hash(ti * 100 + r * 0.37, Math.floor(f * L / 2.6)), single = hash(id, 7.7);
+    const blue = (clump < tiers[ti].blue * 1.5 && single < 0.65) || single < tiers[ti].blue * 0.25;
+    const gold = ((num - r) % 18 + 18) % 18 === 0 || ((num + r) % 18 + 18) % 18 === 0;      // pale-gold diamond lattice woven through the orange (the mosaic look); pure paint, no price effect
+    seatCode[id] = gold ? 2 : blue ? 1 : 0; seatPrice[id] = seatPriceOf(ti, r, x, z);
+    seats.setColorAt(id, gold ? COL.gold : blue ? COL.blue : COL.red);
+    const k = ti + ':' + s; let arr = sectionIds.get(k); if (!arr) sectionIds.set(k, arr = []); arr.push(id);
+    const gk = gkey(Math.floor(x / CELL), Math.floor(z / CELL)); let ga = grid.get(gk); if (!ga) grid.set(gk, ga = []); ga.push(id);
+    id++;
+  });
+  seats.instanceMatrix.needsUpdate = true; seats.instanceColor.needsUpdate = true;
+  seats.computeBoundingSphere();
+}
+// seats do NOT cast into the shadow map: tried in batch 19, re-baking 4.7 M seat triangles stalled the first frame of a flight for ~1.4 s in the test browser (contact shading stays baked in the vertex colours)
+scene.add(seats);
+const seatInfo = id => ({ id, tier: seatTier[id], tierName: tiers[seatTier[id] - 1].name, section: seatSection[id], row: seatRow[id], number: seatNumber[id] });
+
 </script>
 </body>
 </html>
