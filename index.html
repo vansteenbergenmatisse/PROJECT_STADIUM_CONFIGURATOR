@@ -1516,6 +1516,33 @@ function descent() {                       // one straight line, constant headin
   flyTo(LONG_STAND.pos, LONG_STAND.tgt, 10000, ease); setView('Descent');       // keeps the original cubic ease so it still matches the reference video
 }
 
+/* ------------------------------------------------------------------ prices (display side) */
+const fmtRange = ([a, b]) => a === b ? `${CUR}${a}` : `${CUR}${a}–${CUR}${b}`;
+const rangeOf = (ids, pred) => { let lo = Infinity, hi = 0; for (const i of ids) { if (pred && !pred(i)) continue; const p = seatPrice[i]; if (p < lo) lo = p; if (p > hi) hi = p; } return [lo, hi]; };
+/* AVAILABILITY (a made-up rule, not real inventory): only the plain-orange seats (colour code 0) can be bought. The seats with a different colour (light orange = code 1, pale gold lattice = code 2) are NOT available:
+   they cannot be hovered, picked or added to a cart, and section counts / price ranges only use available seats. */
+const isAvail = i => seatCode[i] === 0;
+const availIn = ids => { let n = 0; for (const i of ids) if (isAvail(i)) n++; return n; };
+const tierRange = [0, 1, 2].map(ti => { let lo = Infinity, hi = 0; for (let i = 0; i < seatCount; i++) if (seatTier[i] === ti + 1 && isAvail(i)) { const p = seatPrice[i]; if (p < lo) lo = p; if (p > hi) hi = p; } return [lo, hi]; });
+const secRangeCache = new Map();
+const sectionRange = key => { let r = secRangeCache.get(key); if (!r) secRangeCache.set(key, r = rangeOf(sectionIds.get(key), isAvail)); return r; };
+const suiteD = GLASS_D + BOX_DEPTH / 2;
+const suitePrice = u => { const s = suites[u], f = zoneFactors(s.x, s.z, suiteD); return Math.round(SUITE_BASE * f.zone * f.centre * DEMAND / 10) * 10; };   // per seat
+const suiteRangeAll = (() => { let lo = Infinity, hi = 0; for (let u = 0; u < suites.length; u++) { const p = suitePrice(u); lo = Math.min(lo, p); hi = Math.max(hi, p); } return [lo, hi]; })();
+const LOT_BASE = { N: 40, S: 32, E: 22, W: 22 }, LOT_ROW = [1.25, 1.1, 1.0, 0.9];       // parking per day: lot × distance-to-gate row
+const lotPrice = (lot, row) => Math.round(LOT_BASE[lot] * LOT_ROW[row]);
+const lotRange = lot => [lotPrice(lot, 3), lotPrice(lot, 0)];
+const parkRangeAll = [lotPrice('E', 3), lotPrice('N', 0)];
+const LOT_NAME = { N: 'North', S: 'South', E: 'East', W: 'West' };
+function dOf(x, z) {                        // offset distance d of a plan point from the bowl edge (bisection on the superellipse)
+  let lo = -20, hi = 260;
+  for (let i = 0; i < 28; i++) { const m = (lo + hi) / 2, v = Math.pow(Math.abs(x) / (A0 + m), EXP) + Math.pow(Math.abs(z) / (B0 + m), EXP); if (v > 1) lo = m; else hi = m; }
+  return (lo + hi) / 2;
+}
+const lotOf = (x, z, d) => { const ax = Math.abs(x) / (A0 + d), az = Math.abs(z) / (B0 + d); return az >= ax ? (z > 0 ? 'S' : 'N') : (x > 0 ? 'E' : 'W'); };
+const rowOfD = d => { const o = d - FACADE_D; return o < 35.3 ? 0 : o < 42.7 ? 1 : o < 50 ? 2 : 3; };
+const nearestSuite = (x, z) => { let b = 0, bd = Infinity; suites.forEach((s, u) => { const dd = (s.x - x) ** 2 + (s.z - z) ** 2; if (dd < bd) { bd = dd; b = u; } }); return b; };
+
 </script>
 </body>
 </html>
